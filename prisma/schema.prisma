@@ -1,0 +1,38 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id        String     @id @default(cuid())
+  name      String
+  email     String     @unique
+  password  String
+  role      String     @default("OPERATOR") // ADMIN, OPERATOR
+  movements Movement[]
+}
+
+model Material {
+  id           String     @id @default(cuid())
+  name         String
+  unit         String // e.g., kg, m3, units
+  currentStock Float      @default(0)
+  minStock     Float      @default(0)
+  createdAt    DateTime   @default(now())
+  movements    Movement[]
+}
+
+model Movement {
+  id         String   @id @default(cuid())
+  type       String // IN, OUT
+  quantity   Float
+  date       DateTime @default(now())
+  notes      String?
+  materialId String
+  userId     String
+  material   Material @relation(fields: [materialId], references: [id])
+  user       User     @relation(fields: [userId], references: [id])
+}
