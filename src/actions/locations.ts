@@ -1,0 +1,120 @@
+"use server";
+
+import { prisma } from "@/lib/prisma";
+import { revalidatePath } from "next/cache";
+import { locationSchema, updateLocationSchema } from "../../lib/validation/schemas";
+
+export async function getLocations() {
+  try {
+    return await prisma.location.findMany({
+      orderBy: { name: "asc" },
+    });
+  } catch (error) {
+    console.error("Error fetching locations:", error);
+    return [];
+  }
+}
+
+export async function createLocation(formData: FormData) {
+  try {
+    // Validate with Zod
+    const validatedFields = locationSchema.safeParse({
+      name: formData.get("name"),
+      description: formData.get("description"),
+    });
+
+    if (!validatedFields.success) {
+      return { 
+        error: "Datos de entrada inválidos: " + validatedFields.error.message 
+      };
+    }
+
+    const { name, description } = validatedFields.data;
+
+    await prisma.location.create({
+      data: { 
+        name: name.trim(),
+        description: description?.trim() || null,
+      },
+    });
+
+    revalidatePath("/locations");
+    revalidatePath("/inventory");
+    return { success: true };
+  } catch (error) {
+    console.error("Error creating location:", error);
+    return { error: "Error al crear la ubicación" };
+  }
+}
+
+export async function updateLocation(id: string, formData: FormData) {
+  try {
+    // Validate with Zod (partial update)
+    const validatedFields = updateLocationSchema.safeParse({
+      id,
+      name: formData.get("name"),
+      description: formData.get("description"),
+    });
+
+    if (!validatedFields.success) {
+      return { 
+        error: "Datos de entrada inválidos: " + validatedFields.error.message 
+      };
+    }
+
+    const { name, description } = validatedFields.data;
+
+    const updateData: Record<string, unknown> = { id };
+
+    if (name !== undefined) {
+      updateData.name = name.trim();
+    }
+
+    if (description !== undefined) {
+      updateData.description = description?.trim() || null;
+    }
+
+    await prisma.location.update({
+      where: { id },
+      data: updateData,
+    });
+
+    revalidatePath("/locations");
+    revalidatePath("/inventory");
+    return { success: true };
+  } catch (error) {
+    console.error("Error updating location:", error);
+    return { error: "Error al actualizar la ubicación" };
+  }
+}
+
+export async function deleteLocation(id: string) {
+  try {
+    const materialsWithLocation = await prisma.material.count({
+      where: { locationId: id },
+    });
+
+    if (materialsWithLocation > 0) {
+      return { error: `No se puede eliminar. Hay ${materialsWithLocation} materiales en esta ubicación` };
+    }
+
+    await prisma.location.delete({ where: { id } });
+    revalidatePath("/locations");
+    return { success: true };
+  } catch (error) {
+    console.error("Error deleting location:", error);
+    return { error: "Error al eliminar la ubicación" };
+  }
+}
+
+export async function getLocationsForSelect() {
+  try {
+    return await prisma.location.findMany({
+      select: { id: true, name: true },
+      orderBy: { name: "asc" },
+    });
+  } catch (error) {
+    console.error("Error fetching locations for select:", error);
+    return [];
+  }
+}

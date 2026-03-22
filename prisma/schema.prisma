@@ -7,27 +7,62 @@ datasource db {
 }
 
 model User {
+  id            String         @id @default(cuid())
+  name          String
+  email         String         @unique
+  password      String
+  role          String         @default("OPERATOR")
+  movements     Movement[]
+  refreshTokens RefreshToken[]
+}
+
+model RefreshToken {
+  id          String   @id @default(cuid())
+  hashedToken String   @unique
+  userId      String
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  userAgent   String?
+  deviceId    String?
+  user        User     @relation(fields: [userId], references: [id])
+}
+
+model Category {
   id        String     @id @default(cuid())
   name      String
-  email     String     @unique
-  password  String
-  role      String     @default("OPERATOR") // ADMIN, OPERATOR
-  movements Movement[]
+  createdAt DateTime   @default(now())
+  materials Material[]
+}
+
+model Location {
+  id          String     @id @default(cuid())
+  name        String
+  description String?
+  createdAt   DateTime   @default(now())
+  materials   Material[]
 }
 
 model Material {
   id           String     @id @default(cuid())
   name         String
-  unit         String // e.g., kg, m3, units
+  unit         String
   currentStock Float      @default(0)
   minStock     Float      @default(0)
   createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  active       Boolean
+  deletedAt    DateTime?
+  categoryId   String?
+  locationId   String?
+  category     Category?  @relation(fields: [categoryId], references: [id])
+  location     Location?  @relation(fields: [locationId], references: [id])
   movements    Movement[]
 }
 
 model Movement {
   id         String   @id @default(cuid())
-  type       String // IN, OUT
+  type       String
   quantity   Float
   date       DateTime @default(now())
   notes      String?
