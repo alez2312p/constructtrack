@@ -33,7 +33,14 @@ export function ExportButton({ movements, days, from, to, materialId, type }: Ex
 
     movements.forEach((m) => {
       rows.push([
-        new Date(m.date).toLocaleString("es-ES", { hour: '2-digit', minute: '2-digit', hour12: false }),
+        new Date(m.date).toLocaleString("es-ES", {
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: false,
+        }),
         m.material.name,
         m.type === "IN" ? "Entrada" : "Salida",
         String(m.quantity),

@@ -23,7 +23,7 @@ export default async function LocationsPage() {
   return (
     <div className="space-y-6">
       <ScrollToTop />
-      <Suspense fallback={LocationsLoading()}>
+      <Suspense fallback={<LocationsLoading />}>
         <LocationContent />
       </Suspense>
 

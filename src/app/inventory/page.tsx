@@ -64,9 +64,6 @@ export default async function InventoryPage({
   return (
     <div className="space-y-4">
       <ScrollToTop />
-
-      <h1 className="text-2xl font-bold">Inventario</h1>
-
       <Suspense fallback={<InventoryLoading />}>
         <InventoryContent searchParams={searchParams} userId={session.user.id} />
       </Suspense>

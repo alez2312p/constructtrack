@@ -59,7 +59,7 @@ export function CategoryList({ categories }: CategoryListProps) {
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">Categorías</h1>
 
-        <Button onClick={() => setOpen(true)}>
+        <Button onClick={() => setOpen(true)} >
           <Plus className="h-4 w-4 mr-2" />
           Nueva Categoría
         </Button>
@@ -76,7 +76,7 @@ export function CategoryList({ categories }: CategoryListProps) {
               <Input id="name" name="name" placeholder="Ej: Cementos" required />
             </div>
             <div className="flex justify-end">
-              <Button type="submit">Crear</Button>
+              <Button type="submit" >Crear</Button>
             </div>
           </form>
         </DialogContent>
@@ -94,7 +94,7 @@ export function CategoryList({ categories }: CategoryListProps) {
                 <Input id="edit-name" name="name" defaultValue={editCategory.name} required />
               </div>
               <div className="flex justify-end">
-                <Button type="submit">Actualizar</Button>
+                <Button type="submit" >Actualizar</Button>
               </div>
             </form>
           )}

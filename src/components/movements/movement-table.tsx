@@ -51,7 +51,14 @@ export function MovementTable({ movements }: MovementTableProps) {
                     onClick={() => handleRowClick(movement)}
                   >
                     <TableCell>
-                      {new Date(movement.date).toLocaleString("es-ES", { hour: '2-digit', minute: '2-digit' })}
+                      {new Date(movement.date).toLocaleString("es-ES", {
+                        day: "2-digit",
+                        month: "2-digit",
+                        year: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        hour12: false,
+                      })}
                     </TableCell>
                     <TableCell>
                       <div className="font-medium">{movement.material.name}</div>

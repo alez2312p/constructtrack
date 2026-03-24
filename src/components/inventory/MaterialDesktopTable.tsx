@@ -36,7 +36,11 @@ export const MaterialDesktopTable = ({ materials, ...props }: { materials: Mater
                                     key={m.id}
                                     className={cn(
                                         "transition-colors group",
-                                        m.currentStock <= m.minStock ? "bg-amber-50/30 dark:bg-amber-950/10 hover:bg-amber-50/50" : "hover:bg-muted/30"
+                                        m.currentStock === 0
+                                            ? "bg-red-50/30 dark:bg-red-950/10 hover:bg-red-50/50"
+                                            : m.currentStock <= m.minStock
+                                                ? "bg-amber-50/30 dark:bg-amber-950/10 hover:bg-amber-50/50"
+                                                : "hover:bg-muted/30"
                                     )}
                                 >
                                     <TableCell className="truncate max-w-36">{m.name}</TableCell>

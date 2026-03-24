@@ -42,7 +42,6 @@ export async function getMaterialById(id: string) {
 }
 
 export async function createMaterial(formData: FormData, userId?: string) {
-  console.log("createMaterial called with userId:", userId);
   try {
     // Validate with Zod
     const validatedFields = materialSchema.safeParse({

@@ -1,19 +1,19 @@
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function DashboardLoading() {
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">Dashboard</h1>
 
       {/* Summary Cards Skeleton */}
       <div className="grid grid-cols-3 gap-2">
         {[1, 2, 3].map((i) => (
           <Card key={i}>
             <CardHeader className="pb-2 px-3">
-              <div className="h-4 w-16 bg-muted animate-pulse rounded" />
+              <Skeleton className="h-4 w-16" />
             </CardHeader>
             <CardContent className="px-3 pt-0">
-              <div className="h-8 w-12 bg-muted animate-pulse rounded" />
+              <Skeleton className="h-8 w-12" />
             </CardContent>
           </Card>
         ))}
@@ -22,11 +22,11 @@ export default function DashboardLoading() {
       {/* Alerts Skeleton */}
       <Card>
         <CardHeader>
-          <div className="h-5 w-40 bg-muted animate-pulse rounded" />
+          <Skeleton className="h-5 w-40" />
         </CardHeader>
         <CardContent className="space-y-2">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="h-16 bg-muted animate-pulse rounded-lg" />
+            <Skeleton key={i} className="h-16 rounded-lg" />
           ))}
         </CardContent>
       </Card>
@@ -34,11 +34,11 @@ export default function DashboardLoading() {
       {/* Recent Movements Skeleton */}
       <Card>
         <CardHeader>
-          <div className="h-5 w-40 bg-muted animate-pulse rounded" />
+          <Skeleton className="h-5 w-40" />
         </CardHeader>
         <CardContent className="space-y-2">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="h-14 bg-muted animate-pulse rounded-lg" />
+            <Skeleton key={i} className="h-14 rounded-lg" />
           ))}
         </CardContent>
       </Card>

@@ -14,6 +14,7 @@ import { MaterialMobileCard } from "./MaterialMobileCard";
 import { MaterialDesktopTable } from "./MaterialDesktopTable";
 import { CommonProps, InventoryListProps } from "../../lib/type";
 import DeleteMaterialModal from "./DeleteMaterialModal";
+import { Button } from "../ui/button";
 
 export function InventoryList({
   materials,
@@ -102,7 +103,7 @@ export function InventoryList({
             { id: "low", label: "Stock Bajo", activeClass: "bg-amber-500 text-white" },
             { id: "normal", label: "Normal", activeClass: "bg-green-600 text-white" }
           ].map((f) => (
-            <button
+            <Button
               key={f.id}
               onClick={() => setFilter(f.id)}
               className={cn(
@@ -113,7 +114,7 @@ export function InventoryList({
               )}
             >
               {f.label}
-            </button>
+            </Button>
           ))}
         </div>
       </div>

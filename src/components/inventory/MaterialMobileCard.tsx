@@ -21,7 +21,7 @@ export const MaterialMobileCard = ({ material, ...props }: { material: Material 
             <div className="grid grid-cols-2 gap-2 text-sm">
                 <div className="bg-muted/30 p-2 rounded-md">
                     <p className="text-muted-foreground">Actual</p>
-                    <p className={cn("font-bold text-lg", material.currentStock <= material.minStock && "text-amber-600")}>
+                    <p className={cn("font-bold text-lg", material.currentStock === 0 ? "text-red-600" : material.currentStock <= material.minStock && "text-amber-600")}>
                         {material.currentStock} <span className="font-normal text-muted-foreground">{material.unit}</span>
                     </p>
                 </div>

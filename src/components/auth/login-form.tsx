@@ -44,7 +44,6 @@ export function LoginForm({ callbackUrl }: LoginFormProps) {
       }
 
       const data = await res.json();
-      console.log({ data });
       if (data.success) {
         // Determine target URL: prefer callbackUrl prop, fallback to data.redirectTo, then dashboard
 

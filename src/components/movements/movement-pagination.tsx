@@ -20,15 +20,15 @@ interface PaginationProps {
   type: string;
 }
 
-export function Pagination({ 
-  page, 
-  totalPages, 
-  totalCount, 
-  days, 
-  from, 
-  to, 
-  materialId, 
-  type 
+export function Pagination({
+  page,
+  totalPages,
+  totalCount,
+  days,
+  from,
+  to,
+  materialId,
+  type
 }: PaginationProps) {
   const hasNextPage = page < totalPages;
   const hasPrevPage = page > 1;
@@ -47,7 +47,7 @@ export function Pagination({
           <Link
             href={`/movements/history?${buildQueryString({ ...baseParams, page: String(page - 1) })}`}
           >
-            <Button variant="outline" size="sm">
+            <Button variant="outline" size="sm" >
               Anterior
             </Button>
           </Link>
@@ -56,7 +56,7 @@ export function Pagination({
           <Link
             href={`/movements/history?${buildQueryString({ ...baseParams, page: String(page + 1) })}`}
           >
-            <Button variant="outline" size="sm">
+            <Button variant="outline" size="sm" >
               Siguiente
             </Button>
           </Link>
@@ -66,15 +66,15 @@ export function Pagination({
   );
 }
 
-export function PaginationDesktop({ 
-  page, 
-  totalPages, 
-  totalCount, 
-  days, 
-  from, 
-  to, 
-  materialId, 
-  type 
+export function PaginationDesktop({
+  page,
+  totalPages,
+  totalCount,
+  days,
+  from,
+  to,
+  materialId,
+  type
 }: PaginationProps) {
   const hasNextPage = page < totalPages;
   const hasPrevPage = page > 1;
@@ -93,7 +93,7 @@ export function PaginationDesktop({
           <Link
             href={`/movements/history?${buildQueryString({ ...baseParams, page: String(page - 1) })}`}
           >
-            <Button variant="outline" size="sm">
+            <Button variant="outline" size="sm" >
               Anterior
             </Button>
           </Link>
@@ -102,7 +102,7 @@ export function PaginationDesktop({
           <Link
             href={`/movements/history?${buildQueryString({ ...baseParams, page: String(page + 1) })}`}
           >
-            <Button variant="outline" size="sm">
+            <Button variant="outline" size="sm" >
               Siguiente
             </Button>
           </Link>

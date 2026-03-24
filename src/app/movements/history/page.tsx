@@ -11,8 +11,8 @@ import { CursorPagination } from "@/components/movements/cursor-pagination";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth/get-session";
 import { Suspense } from "react";
-import { Skeleton } from "@/components/ui/skeleton";
 import { MovementData } from "@/lib/type";
+import HistoryLoading from "./loading";
 
 interface MovementsHistoryProps {
   searchParams: Promise<{
@@ -184,43 +184,10 @@ export default async function MovementsHistoryPage({
 
   return (
     <div>
-      <h1>Historial</h1>
       <ScrollToTop />
-      <Suspense fallback={<HistoryContentSkeleton />}>
+      <Suspense fallback={<HistoryLoading />}>
         <MovementsHistoryContent searchParams={searchParams} />
       </Suspense>
     </div>
   )
-}
-
-function HistoryContentSkeleton() {
-  return (
-    <div className="space-y-6">
-      {/* Filters Skeleton */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
-        <Skeleton className="h-10" />
-        <Skeleton className="h-10" />
-        <Skeleton className="h-10" />
-        <Skeleton className="h-10" />
-        <Skeleton className="h-10" />
-      </div>
-
-      {/* Export & Actions */}
-      <div className="flex justify-end">
-        <Skeleton className="h-10 w-32" />
-      </div>
-
-      {/* Table/List Skeleton */}
-      <div className="space-y-4">
-        <div className="hidden md:block space-y-2">
-          <Skeleton className="h-10 w-full" />
-          <Skeleton className="h-16 w-full" />
-          <Skeleton className="h-16 w-full" />
-        </div>
-        <div className="md:hidden space-y-4">
-          <Skeleton className="h-40 w-full rounded-xl" />
-        </div>
-      </div>
-    </div>
-  );
 }

@@ -33,12 +33,12 @@ async function DashboardContent({ userId }: { userId: string }) {
       locationId: "",
     },
   })) as MovementData[];
-
-  const outOfStockCount = allLowStock.filter(m => m.minStock === 0).length;
-  const lowStockCount = allLowStock.filter(m => m.minStock > 0).length;
+  const outOfStockCount = allLowStock.filter(m => m.currentStock === 0).length;
+  const lowStockCount = allLowStock.filter(m => m.currentStock > 0).length;
 
   return (
     <>
+      <h1 className="text-2xl font-bold">Dashboard</h1>
       {/* Summary Cards */}
       <div className="grid grid-cols-3 gap-2">
         <SummaryCard
@@ -99,7 +99,6 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-3">
-      <h1 className="text-2xl font-bold">Dashboard</h1>
       <ScrollToTop />
 
       <Suspense fallback={<DashboardLoading />}>

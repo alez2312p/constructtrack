@@ -173,10 +173,10 @@ export function MaterialForm({ material, userId, trigger, categories = [], locat
               </div>
             )}
             <div className="flex justify-end gap-2 pt-4">
-              <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+              <Button type="button" variant="outline" onClick={() => setOpen(false)} >
                 Cancelar
               </Button>
-              <Button type="submit" disabled={loading}>
+              <Button type="submit" disabled={loading} >
                 {loading ? "Guardando..." : material ? "Actualizar" : "Crear"}
               </Button>
             </div>

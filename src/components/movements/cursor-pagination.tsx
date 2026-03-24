@@ -52,7 +52,7 @@ export function CursorPagination({
           <Link
             href={`/movements/history?${buildQueryString({ ...baseParams, cursor: nextCursor ?? undefined })}`}
           >
-            <Button variant="outline" size="sm">
+            <Button variant="outline" size="sm" >
               Ver más
             </Button>
           </Link>

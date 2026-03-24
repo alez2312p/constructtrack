@@ -73,6 +73,12 @@ export function MovementForm() {
     formData.set("date", date);
     formData.set("materialId", selectedMaterial?.id || "");
 
+    const qty = parseFloat(quantity);
+    if (type === "OUT" && selectedMaterial && qty > selectedMaterial.currentStock) {
+      toast.error("Stock insuficiente para la salida");
+      return;
+    }
+
     setIsPending(true);
     try {
       const result = await registerMovement(formData);
@@ -171,7 +177,7 @@ export function MovementForm() {
           />
           <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1">
             {selectedMaterial && (
-              <button
+              <Button
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation();
@@ -179,10 +185,10 @@ export function MovementForm() {
                   setMaterialSearch("");
                   inputRef.current?.focus();
                 }}
-                className="p-1 hover:bg-muted rounded"
+                className="p-1 bg-muted rounded"
               >
                 <X className="h-4 w-4 text-muted-foreground" />
-              </button>
+              </Button>
             )}
             <ChevronDown className={cn("h-4 w-4 text-muted-foreground transition-transform", isOpen && "rotate-180")} />
           </div>
@@ -197,7 +203,7 @@ export function MovementForm() {
               </div>
             ) : (
               filteredMaterials.map((material) => (
-                <button
+                <Button
                   key={material.id}
                   type="button"
                   onClick={() => {
@@ -205,10 +211,10 @@ export function MovementForm() {
                     setMaterialSearch(material.name);
                     setIsOpen(false);
                   }}
-                  className="w-full p-3 text-left hover:bg-muted flex items-center justify-between transition-colors"
+                  className="w-full px-3 py-6 text-left bg-muted flex items-center justify-between transition-colors"
                 >
                   <div className="min-w-0">
-                    <span className="font-medium">{material.name}</span>
+                    <span className="font-medium text-accent-foreground">{material.name}</span>
                     <div className="flex flex-wrap gap-1 mt-1">
                       {material.category && (
                         <Badge variant="outline" className="text-[10px] px-1 py-0 h-5">
@@ -225,7 +231,7 @@ export function MovementForm() {
                   <span className="text-sm text-muted-foreground">
                     {material.currentStock} {material.unit}
                   </span>
-                </button>
+                </Button>
               )))}
           </div>
         )}

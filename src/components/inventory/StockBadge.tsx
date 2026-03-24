@@ -2,6 +2,17 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
 export const StockBadge = ({ current, min }: { current: number; min: number }) => {
+    if (current === 0) {
+        return (
+            <Badge
+                variant="secondary"
+                className="font-semibold border-none shadow-none bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300"
+            >
+                Agotado
+            </Badge>
+        );
+    }
+
     const isLow = current <= min;
     return (
         <Badge

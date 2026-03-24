@@ -26,13 +26,14 @@ const DeleteMaterialModal = ({
                     ¿Estás seguro de que deseas eliminar este material? Esta acción no se puede deshacer.
                 </DialogDescription>
                 <DialogFooter>
-                    <Button variant="outline" onClick={handleDeleteCancel}>
+                    <Button variant="outline" onClick={handleDeleteCancel} >
                         Cancelar
                     </Button>
                     <Button
                         variant="destructive"
                         onClick={handleDeleteConfirm}
                         disabled={deleteLoading}
+
                     >
                         {deleteLoading ? "Eliminando..." : "Eliminar"}
                     </Button>

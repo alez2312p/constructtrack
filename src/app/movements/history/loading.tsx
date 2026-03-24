@@ -1,6 +1,6 @@
 import { Skeleton } from "@/components/ui/skeleton";
 
-export default function MovementsHistoryLoading() {
+export default function HistoryLoading() {
     return (
         <div className="space-y-6">
             {/* Title */}

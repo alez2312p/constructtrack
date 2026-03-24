@@ -1,12 +1,13 @@
 import { Card, CardContent } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function CategoriesLoading() {
   return (
     <div className="space-y-6">
       {/* Header Skeleton */}
       <div className="flex justify-between items-center">
-        <div className="h-8 w-32 bg-muted animate-pulse rounded" />
-        <div className="h-10 w-36 bg-muted animate-pulse rounded" />
+        <Skeleton className="h-8 w-32" />
+        <Skeleton className="h-10 w-36" />
       </div>
 
       {/* Categories List Skeleton */}
@@ -14,7 +15,7 @@ export default function CategoriesLoading() {
         {[1, 2, 3, 4, 5].map((i) => (
           <Card key={i}>
             <CardContent className="p-4">
-              <div className="h-4 w-24 bg-muted animate-pulse rounded" />
+              <Skeleton className="h-4 w-24" />
             </CardContent>
           </Card>
         ))}

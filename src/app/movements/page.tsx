@@ -4,7 +4,6 @@ import { ScrollToTop } from "@/components/ui/scroll-to-top";
 import { Toaster } from "@/components/ui/sonner";
 import { History } from "lucide-react";
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
 import { MovementItem } from "@/components/movements/movement-card";
 import { redirect } from "next/navigation";
 import { getRecentMovements } from "@/actions/materials";
@@ -77,11 +76,9 @@ export default async function MovementsPage() {
       <ScrollToTop />
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Movimientos</h1>
-        <Link href="/movements/history">
-          <Button variant="outline" className="gap-2">
-            <History className="h-4 w-4" />
-            Historial
-          </Button>
+        <Link href="/movements/history" className="flex items-center gap-0.5 bg-accent px-1 border rounded-xl cursor-pointer">
+          <History className="h-4 w-4" />
+          Historial
         </Link>
       </div>
 
