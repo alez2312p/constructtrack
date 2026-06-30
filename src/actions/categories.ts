@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { assertSession } from "@/lib/auth/assert-session";
 import { categorySchema } from "@/lib/validation/schemas";
+import { rateLimit } from "@/lib/rate-limit";
 
 export async function getCategories() {
   // No auth needed for reading? According to original, no auth required.
@@ -19,7 +20,15 @@ export async function getCategories() {
 
 export async function createCategory(formData: FormData) {
   // Auth
-  await assertSession();
+  const session = await assertSession();
+
+  // Rate limiting
+  if (rateLimit) {
+    const { success } = await rateLimit.mutation.limit(session.user.id);
+    if (!success) {
+      return { error: "Demasiadas solicitudes. Intenta de nuevo en un minuto." };
+    }
+  }
 
   const validated = categorySchema.safeParse({
     name: formData.get("name"),
@@ -55,7 +64,15 @@ export async function createCategory(formData: FormData) {
 }
 
 export async function updateCategory(id: string, formData: FormData) {
-  await assertSession();
+  const session = await assertSession();
+
+  // Rate limiting
+  if (rateLimit) {
+    const { success } = await rateLimit.mutation.limit(session.user.id);
+    if (!success) {
+      return { error: "Demasiadas solicitudes. Intenta de nuevo en un minuto." };
+    }
+  }
 
   const validated = categorySchema.safeParse({
     name: formData.get("name"),
@@ -92,7 +109,15 @@ export async function updateCategory(id: string, formData: FormData) {
 }
 
 export async function deleteCategory(id: string) {
-  await assertSession();
+  const session = await assertSession();
+
+  // Rate limiting
+  if (rateLimit) {
+    const { success } = await rateLimit.mutation.limit(session.user.id);
+    if (!success) {
+      return { error: "Demasiadas solicitudes. Intenta de nuevo en un minuto." };
+    }
+  }
 
   try {
     const materialsWithCategory = await prisma.material.count({

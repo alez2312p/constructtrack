@@ -3,6 +3,8 @@
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { locationSchema, updateLocationSchema } from "../../lib/validation/schemas";
+import { assertSession } from "@/lib/auth/assert-session";
+import { rateLimit } from "@/lib/rate-limit";
 
 export async function getLocations() {
   try {
@@ -16,6 +18,17 @@ export async function getLocations() {
 }
 
 export async function createLocation(formData: FormData) {
+  // Auth
+  const session = await assertSession();
+
+  // Rate limiting
+  if (rateLimit) {
+    const { success } = await rateLimit.mutation.limit(session.user.id);
+    if (!success) {
+      return { error: "Demasiadas solicitudes. Intenta de nuevo en un minuto." };
+    }
+  }
+
   try {
     // Validate with Zod
     const validatedFields = locationSchema.safeParse({
@@ -48,6 +61,17 @@ export async function createLocation(formData: FormData) {
 }
 
 export async function updateLocation(id: string, formData: FormData) {
+  // Auth
+  const session = await assertSession();
+
+  // Rate limiting
+  if (rateLimit) {
+    const { success } = await rateLimit.mutation.limit(session.user.id);
+    if (!success) {
+      return { error: "Demasiadas solicitudes. Intenta de nuevo en un minuto." };
+    }
+  }
+
   try {
     // Validate with Zod (partial update)
     const validatedFields = updateLocationSchema.safeParse({
@@ -89,6 +113,17 @@ export async function updateLocation(id: string, formData: FormData) {
 }
 
 export async function deleteLocation(id: string) {
+  // Auth
+  const session = await assertSession();
+
+  // Rate limiting
+  if (rateLimit) {
+    const { success } = await rateLimit.mutation.limit(session.user.id);
+    if (!success) {
+      return { error: "Demasiadas solicitudes. Intenta de nuevo en un minuto." };
+    }
+  }
+
   try {
     const materialsWithLocation = await prisma.material.count({
       where: { locationId: id },

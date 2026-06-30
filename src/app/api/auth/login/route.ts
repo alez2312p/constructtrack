@@ -1,9 +1,27 @@
 import { NextResponse } from "next/server";
 import { login } from "@/actions/auth";
 import { setAuthCookies } from "@/lib/auth/tokens-server";
+import { rateLimit } from "@/lib/rate-limit";
+import { logger } from "@/lib/logger";
 
 export async function POST(request: Request) {
   try {
+    // Rate limiting por IP a nivel de API
+    if (rateLimit) {
+      const ip =
+        request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+        request.headers.get("x-real-ip") ??
+        "unknown";
+      const { success } = await rateLimit.general.limit(`api:${ip}`);
+      if (!success) {
+        logger.warn("Rate limit API alcanzado en login/route", { ip });
+        return NextResponse.json(
+          { error: "Demasiadas solicitudes. Intenta de nuevo en un minuto." },
+          { status: 429 },
+        );
+      }
+    }
+
     const body = await request.json();
     const { email, password } = body;
     if (!email || !password) {

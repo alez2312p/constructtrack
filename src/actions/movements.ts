@@ -4,10 +4,19 @@ import { prisma } from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
 import { movementSchema } from '@/lib/validation/schemas';
 import { assertSession } from '@/lib/auth/assert-session';
+import { rateLimit } from '@/lib/rate-limit';
 
 export async function registerMovement(formData: FormData) {
   // 1️⃣ Validate session
   const session = await assertSession(); // throws if not authenticated
+
+  // 1b️⃣ Rate limiting
+  if (rateLimit) {
+    const { success } = await rateLimit.mutation.limit(session.user.id);
+    if (!success) {
+      return { error: "Demasiadas solicitudes. Intenta de nuevo en un minuto." };
+    }
+  }
 
   // 2️⃣ Validate input with Zod
   const validated = movementSchema.safeParse({

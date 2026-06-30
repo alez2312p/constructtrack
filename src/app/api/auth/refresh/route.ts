@@ -8,9 +8,23 @@ import {
 } from "@/lib/auth/tokens-server";
 import { verifyAccessToken } from "@/lib/auth/tokens-edge";
 import { cookies } from "next/headers";
+import { rateLimit } from "@/lib/rate-limit";
+import { logger } from "@/lib/logger";
 
 export async function GET(request: Request) {
   try {
+    // Rate limiting por IP
+    if (rateLimit) {
+      const ip =
+        request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+        request.headers.get("x-real-ip") ??
+        "unknown";
+      const { success } = await rateLimit.general.limit(`refresh:${ip}`);
+      if (!success) {
+        logger.warn("Rate limit API alcanzado en refresh", { ip });
+        return NextResponse.redirect(new URL("/login", request.url));
+      }
+    }
     const cookieStore = await cookies();
     const accessToken = cookieStore.get("accessToken")?.value;
     const refreshToken = cookieStore.get("refreshToken")?.value;

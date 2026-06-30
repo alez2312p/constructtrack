@@ -9,9 +9,11 @@ import {
   revokeRefreshToken,
   clearAuthCookies,
 } from "@/lib/auth/tokens-server";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { loginSchema } from "@/lib/validation/schemas";
+import { rateLimit } from "@/lib/rate-limit";
+import { logger } from "@/lib/logger";
 
 export type LoginResult =
   | {
@@ -46,6 +48,32 @@ export async function login(formData: FormData): Promise<LoginResult> {
   }
 
   const { email, password } = validatedFields.data;
+
+  // --- Rate limiting: 5 intentos por 10 minutos por email ---
+  if (rateLimit) {
+    const headersList = await headers();
+    const ip = headersList.get("x-forwarded-for")?.split(",")[0]?.trim()
+      ?? headersList.get("x-real-ip")
+      ?? "unknown";
+    const { success, remaining } = await rateLimit.login.limit(
+      `ip:${ip}`,
+    );
+    if (!success) {
+      logger.warn("Rate limit alcanzado en login", {
+        ip,
+        email: email.toLowerCase(),
+      });
+      return {
+        success: false,
+        error: "Demasiados intentos. Intenta de nuevo en 10 minutos.",
+      };
+    }
+    logger.info("Login attempt", {
+      ip,
+      email: email.toLowerCase(),
+      remaining,
+    });
+  }
 
   const user = await prisma.user.findUnique({ where: { email } });
   if (!user) {

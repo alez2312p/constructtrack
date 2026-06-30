@@ -23,6 +23,14 @@ export function LoginForm({ callbackUrl }: LoginFormProps) {
     setIsPending(true);
 
     try {
+      const formEl = e.currentTarget as HTMLFormElement;
+      const honeypot = (formEl.querySelector<HTMLInputElement>('input[name="honeypot"]'))?.value;
+      if (honeypot) {
+        setError("Error inesperado.");
+        setIsPending(false);
+        return;
+      }
+
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -75,6 +83,14 @@ export function LoginForm({ callbackUrl }: LoginFormProps) {
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Honeypot field para atrapar bots */}
+          <input
+            type="text"
+            name="honeypot"
+            className="absolute opacity-0 h-0 w-0 -z-10"
+            tabIndex={-1}
+            autoComplete="off"
+          />
           {error && (
             <div className="text-sm text-red-500 bg-red-50 p-2 rounded">
               {error}
@@ -108,6 +124,11 @@ export function LoginForm({ callbackUrl }: LoginFormProps) {
             Iniciar Sesión
           </Button>
         </form>
+        <div className="mt-6 pt-6 border-t text-sm text-gray-200">
+          <p className="font-semibold mb-2">Credenciales de prueba:</p>
+          <p>Email: <span className="font-mono text-gray-500">admin@constructtrack.com</span></p>
+          <p>Contraseña: <span className="font-mono text-gray-500">admin123</span></p>
+        </div>
       </CardContent>
     </Card>
   );

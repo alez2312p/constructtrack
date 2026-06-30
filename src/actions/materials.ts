@@ -8,6 +8,8 @@ import {
 } from "../lib/validation/schemas";
 import { Prisma } from "@prisma/client";
 import { startOfDay, endOfDay } from "date-fns";
+import { rateLimit } from "@/lib/rate-limit";
+import { assertSession } from "@/lib/auth/assert-session";
 
 export async function getMaterials(cursor?: string, limit: number = 50) {
   try {
@@ -42,6 +44,15 @@ export async function getMaterialById(id: string) {
 }
 
 export async function createMaterial(formData: FormData, userId?: string) {
+  // --- Rate limiting ---
+  if (rateLimit) {
+    const identifier = userId ?? "anonymous";
+    const { success } = await rateLimit.mutation.limit(identifier);
+    if (!success) {
+      return { error: "Demasiadas solicitudes. Intenta de nuevo en un minuto." };
+    }
+  }
+
   try {
     // Validate with Zod
     const validatedFields = materialSchema.safeParse({
@@ -142,6 +153,17 @@ export async function createMaterial(formData: FormData, userId?: string) {
 }
 
 export async function updateMaterial(id: string, formData: FormData) {
+  // --- Auth check ---
+  const session = await assertSession();
+
+  // --- Rate limiting ---
+  if (rateLimit) {
+    const { success } = await rateLimit.mutation.limit(session.user.id);
+    if (!success) {
+      return { error: "Demasiadas solicitudes. Intenta de nuevo en un minuto." };
+    }
+  }
+
   try {
     // Validate with Zod (partial update)
     const validatedFields = updateMaterialSchema.safeParse({
@@ -195,6 +217,17 @@ export async function updateMaterial(id: string, formData: FormData) {
 }
 
 export async function deleteMaterial(id: string) {
+  // --- Auth check ---
+  const session = await assertSession();
+
+  // --- Rate limiting ---
+  if (rateLimit) {
+    const { success } = await rateLimit.mutation.limit(session.user.id);
+    if (!success) {
+      return { error: "Demasiadas solicitudes. Intenta de nuevo en un minuto." };
+    }
+  }
+
   try {
     await prisma.material.update({
       where: { id },
