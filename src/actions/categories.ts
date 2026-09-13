@@ -3,12 +3,23 @@
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { assertSession } from "@/lib/auth/assert-session";
+import { getSession } from "@/lib/auth/get-session";
 import { categorySchema } from "@/lib/validation/schemas";
 import { rateLimit } from "@/lib/rate-limit";
+import {
+  getDemoCategories,
+  getDemoCategoriesForSelect,
+  createDemoCategory,
+  updateDemoCategory,
+  deleteDemoCategory,
+} from "@/lib/demo/demo-store";
 
 export async function getCategories() {
-  // No auth needed for reading? According to original, no auth required.
   try {
+    const session = await getSession();
+    if (session?.user?.isDemo) {
+      return await getDemoCategories(session.user.demoSessionId);
+    }
     return await prisma.category.findMany({
       orderBy: [{ name: "asc" }],
     });
@@ -23,7 +34,7 @@ export async function createCategory(formData: FormData) {
   const session = await assertSession();
 
   // Rate limiting
-  if (rateLimit) {
+  if (!session.user.isDemo && rateLimit) {
     const { success } = await rateLimit.mutation.limit(session.user.id);
     if (!success) {
       return { error: "Demasiadas solicitudes. Intenta de nuevo en un minuto." };
@@ -48,6 +59,13 @@ export async function createCategory(formData: FormData) {
   }
 
   const { name } = validated.data;
+
+  if (session.user.isDemo) {
+    await createDemoCategory(session.user.demoSessionId, { name: name.trim() });
+    revalidatePath("/categories");
+    revalidatePath("/inventory");
+    return { success: true };
+  }
 
   try {
     await prisma.category.create({
@@ -67,7 +85,7 @@ export async function updateCategory(id: string, formData: FormData) {
   const session = await assertSession();
 
   // Rate limiting
-  if (rateLimit) {
+  if (!session.user.isDemo && rateLimit) {
     const { success } = await rateLimit.mutation.limit(session.user.id);
     if (!success) {
       return { error: "Demasiadas solicitudes. Intenta de nuevo en un minuto." };
@@ -92,6 +110,14 @@ export async function updateCategory(id: string, formData: FormData) {
   }
 
   const { name } = validated.data;
+
+  if (session.user.isDemo) {
+    const res = await updateDemoCategory(session.user.demoSessionId, id, { name: name.trim() });
+    if (res.error) return { error: res.error };
+    revalidatePath("/categories");
+    revalidatePath("/inventory");
+    return { success: true };
+  }
 
   try {
     await prisma.category.update({
@@ -112,11 +138,19 @@ export async function deleteCategory(id: string) {
   const session = await assertSession();
 
   // Rate limiting
-  if (rateLimit) {
+  if (!session.user.isDemo && rateLimit) {
     const { success } = await rateLimit.mutation.limit(session.user.id);
     if (!success) {
       return { error: "Demasiadas solicitudes. Intenta de nuevo en un minuto." };
     }
+  }
+
+  if (session.user.isDemo) {
+    const res = await deleteDemoCategory(session.user.demoSessionId, id);
+    if (res.error) return { error: res.error };
+    revalidatePath("/categories");
+    revalidatePath("/inventory");
+    return { success: true };
   }
 
   try {
@@ -132,6 +166,7 @@ export async function deleteCategory(id: string) {
 
     await prisma.category.delete({ where: { id } });
     revalidatePath("/categories");
+    revalidatePath("/inventory");
     return { success: true };
   } catch (error) {
     console.error("Error deleting category:", error);
@@ -141,6 +176,10 @@ export async function deleteCategory(id: string) {
 
 export async function getCategoriesForSelect() {
   try {
+    const session = await getSession();
+    if (session?.user?.isDemo) {
+      return await getDemoCategoriesForSelect(session.user.demoSessionId);
+    }
     return await prisma.category.findMany({
       select: { id: true, name: true },
       orderBy: [{ name: "asc" }],

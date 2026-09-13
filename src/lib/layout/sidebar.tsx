@@ -19,23 +19,37 @@ const navItems = [
   { href: "/settings", label: "Configuración", icon: Settings },
 ];
 
-export function Sidebar() {
+export function Sidebar({ isDemo }: { isDemo?: boolean }) {
   const pathname = usePathname();
 
   return (
     <>
       {/* Mobile Navigation */}
       <div className="md:hidden fixed top-0 left-0 right-0 z-50 bg-background border-b flex items-center justify-between px-4 h-14">
-        <span className="font-bold text-lg">ConstructTrack</span>
-        <MobileNav pathname={pathname} />
+        <div className="flex items-center gap-2">
+          <span className="font-bold text-lg">ConstructTrack</span>
+          {isDemo && (
+            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30">
+              DEMO
+            </span>
+          )}
+        </div>
+        <MobileNav pathname={pathname} isDemo={isDemo} />
       </div>
 
       {/* Desktop Sidebar */}
       <aside className="hidden md:flex md:flex-col md:fixed md:inset-y-0 md:left-0 md:w-64 md:bg-background md:border-r md:z-40">
         <div className="flex flex-col h-full">
-          <div className="flex items-center gap-2 px-6 py-4 border-b">
-            <Package className="h-6 w-6" />
-            <span className="font-bold text-lg">ConstructTrack</span>
+          <div className="flex items-center justify-between px-6 py-4 border-b">
+            <div className="flex items-center gap-2">
+              <Package className="h-6 w-6" />
+              <span className="font-bold text-lg">ConstructTrack</span>
+            </div>
+            {isDemo && (
+              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30">
+                DEMO
+              </span>
+            )}
           </div>
           <nav className="flex-1 px-3 py-4 space-y-1">
             {navItems.map((item) => (
@@ -68,7 +82,7 @@ export function Sidebar() {
   );
 }
 
-function MobileNav({ pathname }: { pathname: string }) {
+function MobileNav({ pathname, isDemo }: { pathname: string; isDemo?: boolean }) {
   const [open, setOpen] = React.useState(false);
 
   return (
@@ -80,7 +94,14 @@ function MobileNav({ pathname }: { pathname: string }) {
       </SheetTrigger>
       <SheetContent side="right" className="w-72">
         <SheetHeader className="mb-4">
-          <SheetTitle>Menú</SheetTitle>
+          <div className="flex items-center justify-between pr-4">
+            <SheetTitle>Menú</SheetTitle>
+            {isDemo && (
+              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30">
+                DEMO
+              </span>
+            )}
+          </div>
         </SheetHeader>
         <nav className="space-y-1">
           {navItems.map((item) => (

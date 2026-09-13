@@ -48,6 +48,19 @@ export async function GET(request: Request) {
       return NextResponse.redirect(new URL("/login", request.url));
     }
 
+    // Check if demo token
+    if (refreshToken.startsWith("demo_refresh_")) {
+      const demoSessionId = refreshToken.replace("demo_refresh_", "");
+      const newAccessToken = await generateAccessToken({
+        id: "demo-admin-id",
+        role: "ADMIN",
+        isDemo: true,
+        demoSessionId,
+      });
+      await setAuthCookies(newAccessToken, refreshToken, true, demoSessionId);
+      return NextResponse.redirect(new URL(callbackUrl, request.url));
+    }
+
     // Validate refresh token exists in DB and is not expired/revoked
     const tokenRecord = await findValidRefreshToken(refreshToken);
     if (!tokenRecord) {

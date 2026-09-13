@@ -7,6 +7,7 @@ import {
   generateRefreshToken,
   storeRefreshToken,
   revokeRefreshToken,
+  setAuthCookies,
   clearAuthCookies,
 } from "@/lib/auth/tokens-server";
 import { cookies, headers } from "next/headers";
@@ -20,6 +21,8 @@ export type LoginResult =
       success: true;
       accessToken: string;
       refreshToken: string;
+      isDemo?: boolean;
+      demoSessionId?: string;
     }
   | {
       success: false;
@@ -48,6 +51,26 @@ export async function login(formData: FormData): Promise<LoginResult> {
   }
 
   const { email, password } = validatedFields.data;
+
+  // Acceso a demo vía formulario si se ingresa el correo demo
+  if (email.toLowerCase() === "demo@constructtrack.com") {
+    const demoSessionId = crypto.randomUUID();
+    const accessToken = await generateAccessToken({
+      id: "demo-admin-id",
+      role: "ADMIN",
+      isDemo: true,
+      demoSessionId,
+    });
+    const refreshToken = `demo_refresh_${demoSessionId}`;
+
+    return {
+      success: true,
+      accessToken,
+      refreshToken,
+      isDemo: true,
+      demoSessionId,
+    };
+  }
 
   // --- Rate limiting: 5 intentos por 10 minutos por email ---
   if (rateLimit) {
@@ -101,6 +124,27 @@ export async function login(formData: FormData): Promise<LoginResult> {
   };
 }
 
+export async function createDemoSession(role: "ADMIN" | "OPERATOR" = "ADMIN") {
+  const demoSessionId = crypto.randomUUID();
+  const userId = role === "ADMIN" ? "demo-admin-id" : "demo-operator-id";
+  const accessToken = await generateAccessToken({
+    id: userId,
+    role,
+    isDemo: true,
+    demoSessionId,
+  });
+  const refreshToken = `demo_refresh_${demoSessionId}`;
+
+  await setAuthCookies(accessToken, refreshToken, true, demoSessionId);
+
+  return {
+    success: true,
+    accessToken,
+    refreshToken,
+    demoSessionId,
+  };
+}
+
 // Refresh token action
 export async function refresh() {
   // In actions, we don't have direct access to cookies
@@ -114,9 +158,13 @@ export async function logout() {
   const cookieStore = await cookies();
   const refreshToken = cookieStore.get("refreshToken")?.value;
 
-  // Revoke refresh token from database if it exists
-  if (refreshToken) {
-    await revokeRefreshToken(refreshToken);
+  // Revoke refresh token from database if it exists and is NOT a demo token
+  if (refreshToken && !refreshToken.startsWith("demo_refresh_")) {
+    try {
+      await revokeRefreshToken(refreshToken);
+    } catch (err) {
+      console.error("Error revoking refresh token:", err);
+    }
   }
 
   // Clear cookies

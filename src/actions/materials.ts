@@ -10,9 +10,40 @@ import { Prisma } from "@prisma/client";
 import { startOfDay, endOfDay } from "date-fns";
 import { rateLimit } from "@/lib/rate-limit";
 import { assertSession } from "@/lib/auth/assert-session";
+import { getSession } from "@/lib/auth/get-session";
+import {
+  getDemoMaterials,
+  getDemoMaterialById,
+  getDemoLowStockMaterials,
+  getDemoTotalMaterialsCount,
+  getDemoRecentMovements,
+  createDemoMaterial,
+  updateDemoMaterial,
+  deleteDemoMaterial,
+} from "@/lib/demo/demo-store";
 
 export async function getMaterials(cursor?: string, limit: number = 50) {
   try {
+    const session = await getSession();
+    if (session?.user?.isDemo) {
+      const demoMats = await getDemoMaterials(session.user.demoSessionId, cursor, limit);
+      return demoMats as unknown as Array<{
+        id: string;
+        name: string;
+        unit: string;
+        currentStock: number;
+        minStock: number;
+        active: boolean;
+        deletedAt: Date | null;
+        categoryId: string | null;
+        locationId: string | null;
+        createdAt: Date;
+        updatedAt: Date;
+        category: { id: string; name: string; createdAt: Date } | null;
+        location: { id: string; name: string; description: string | null; createdAt: Date } | null;
+      }>;
+    }
+
     const where = cursor
       ? { id: { lt: cursor }, active: true }
       : { active: true };
@@ -34,6 +65,24 @@ export async function getMaterials(cursor?: string, limit: number = 50) {
 
 export async function getMaterialById(id: string) {
   try {
+    const session = await getSession();
+    if (session?.user?.isDemo) {
+      const demoMat = await getDemoMaterialById(session.user.demoSessionId, id);
+      if (!demoMat) return null;
+      return {
+        id: demoMat.id,
+        name: demoMat.name,
+        unit: demoMat.unit,
+        currentStock: demoMat.currentStock,
+        minStock: demoMat.minStock,
+        createdAt: demoMat.createdAt,
+        updatedAt: demoMat.updatedAt,
+        active: demoMat.active,
+        deletedAt: demoMat.deletedAt,
+        categoryId: demoMat.categoryId,
+        locationId: demoMat.locationId,
+      };
+    }
     return await prisma.material.findUnique({
       where: { id },
     });
@@ -44,8 +93,11 @@ export async function getMaterialById(id: string) {
 }
 
 export async function createMaterial(formData: FormData, userId?: string) {
+  const session = await getSession();
+  const isDemo = session?.user?.isDemo;
+
   // --- Rate limiting ---
-  if (rateLimit) {
+  if (!isDemo && rateLimit) {
     const identifier = userId ?? "anonymous";
     const { success } = await rateLimit.mutation.limit(identifier);
     if (!success) {
@@ -79,6 +131,13 @@ export async function createMaterial(formData: FormData, userId?: string) {
         error: "Datos de entrada inválidos",
         fieldErrors,
       };
+    }
+
+    if (isDemo) {
+      await createDemoMaterial(session?.user?.demoSessionId, validatedFields.data, session?.user?.id);
+      revalidatePath("/inventory");
+      revalidatePath("/dashboard");
+      return { success: true };
     }
 
     const { name, unit, minStock, initialStock, categoryId, locationId } =
@@ -157,7 +216,7 @@ export async function updateMaterial(id: string, formData: FormData) {
   const session = await assertSession();
 
   // --- Rate limiting ---
-  if (rateLimit) {
+  if (!session.user.isDemo && rateLimit) {
     const { success } = await rateLimit.mutation.limit(session.user.id);
     if (!success) {
       return { error: "Demasiadas solicitudes. Intenta de nuevo en un minuto." };
@@ -179,6 +238,14 @@ export async function updateMaterial(id: string, formData: FormData) {
       return {
         error: "Datos de entrada inválidos: " + validatedFields.error.message,
       };
+    }
+
+    if (session.user.isDemo) {
+      const res = await updateDemoMaterial(session.user.demoSessionId, id, validatedFields.data);
+      if (res.error) return { error: res.error };
+      revalidatePath("/inventory");
+      revalidatePath("/dashboard");
+      return { success: true };
     }
 
     const { name, unit, minStock, categoryId, locationId } =
@@ -221,11 +288,19 @@ export async function deleteMaterial(id: string) {
   const session = await assertSession();
 
   // --- Rate limiting ---
-  if (rateLimit) {
+  if (!session.user.isDemo && rateLimit) {
     const { success } = await rateLimit.mutation.limit(session.user.id);
     if (!success) {
       return { error: "Demasiadas solicitudes. Intenta de nuevo en un minuto." };
     }
+  }
+
+  if (session.user.isDemo) {
+    const res = await deleteDemoMaterial(session.user.demoSessionId, id);
+    if (res.error) return { error: res.error };
+    revalidatePath("/inventory");
+    revalidatePath("/dashboard");
+    return { success: true };
   }
 
   try {
@@ -247,6 +322,25 @@ export async function deleteMaterial(id: string) {
 
 export async function getLowStockMaterials() {
   try {
+    const session = await getSession();
+    if (session?.user?.isDemo) {
+      const materials = await getDemoLowStockMaterials(session.user.demoSessionId);
+      return materials as unknown as Array<{
+        id: string;
+        name: string;
+        unit: string;
+        currentStock: number;
+        minStock: number;
+        active: boolean;
+        deletedAt: Date | null;
+        categoryId: string | null;
+        locationId: string | null;
+        createdAt: Date;
+        updatedAt: Date;
+        category: { id: string; name: string } | null;
+        location: { id: string; name: string } | null;
+      }>;
+    }
     const materials = await prisma.material.findMany({
       where: { active: true },
     });
@@ -257,8 +351,33 @@ export async function getLowStockMaterials() {
   }
 }
 
-export async function getRecentMovements(onlyToday: boolean, limit?: number) {
+export type RecentMovement = {
+  id: string;
+  type: "IN" | "OUT";
+  quantity: number;
+  date: Date;
+  notes: string | null;
+  user: { id: string; name: string };
+  material: {
+    id: string;
+    name: string;
+    unit: string;
+    category: { name: string } | null;
+    location: { name: string } | null;
+  };
+};
+
+export async function getRecentMovements(
+  onlyToday: boolean,
+  limit?: number
+): Promise<RecentMovement[]> {
   try {
+    const session = await getSession();
+    if (session?.user?.isDemo) {
+      const demoMovements = await getDemoRecentMovements(session.user.demoSessionId, onlyToday, limit);
+      return demoMovements as RecentMovement[];
+    }
+
     const where: Prisma.MovementWhereInput = {};
 
     if (onlyToday) {
@@ -335,6 +454,11 @@ export async function getRecentMovements(onlyToday: boolean, limit?: number) {
 
 export async function getTotalMaterialsCount() {
   try {
+    const session = await getSession();
+    if (session?.user?.isDemo) {
+      return await getDemoTotalMaterialsCount(session.user.demoSessionId);
+    }
+
     return await prisma.material.count({
       where: { active: true },
     });

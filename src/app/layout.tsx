@@ -21,11 +21,16 @@ export const metadata: Metadata = {
   description: "Sistema de gestión de inventario de construcción",
 };
 
-export default function RootLayout({
+import { getSession } from "@/lib/auth/get-session";
+
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const session = await getSession();
+  const isDemo = Boolean(session?.user?.isDemo);
+
   return (
     <html lang="es" suppressHydrationWarning>
       <body
@@ -37,7 +42,7 @@ export default function RootLayout({
           enableSystem={false}
           disableTransitionOnChange
         >
-          <Shell sidebar={<Sidebar />}>
+          <Shell sidebar={<Sidebar isDemo={isDemo} />} isDemo={isDemo}>
             {children}
           </Shell>
           <Toaster />

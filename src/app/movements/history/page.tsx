@@ -14,6 +14,8 @@ import { Suspense } from "react";
 import { MovementData } from "@/lib/type";
 import HistoryLoading from "./loading";
 
+import { getDemoMovementsHistory } from "@/lib/demo/demo-store";
+
 interface MovementsHistoryProps {
   searchParams: Promise<{
     from?: string;
@@ -24,9 +26,13 @@ interface MovementsHistoryProps {
     cursor?: string;
     limit?: string;
   }>;
+  isDemo?: boolean;
+  demoSessionId?: string;
 }
 async function MovementsHistoryContent({
   searchParams,
+  isDemo,
+  demoSessionId,
 }: MovementsHistoryProps) {
   const params = await searchParams;
 
@@ -38,81 +44,102 @@ async function MovementsHistoryContent({
   const cursor = params.cursor;
   const limit = parseInt(params.limit || "20", 10);
 
-  const dateFilter = buildDateFilter(days, from, to);
-  const where: Prisma.MovementWhereInput = {};
+  let paginatedMovements: MovementData[];
+  let materials: Array<{ id: string; name: string }>;
+  let hasNextPage: boolean;
+  let nextCursor: string | null;
+  let totalCount: number;
 
-  if (dateFilter) where.date = dateFilter;
-  if (materialId) where.materialId = materialId;
-  if (type) where.type = type as "IN" | "OUT";
+  if (isDemo) {
+    const demoResult = await getDemoMovementsHistory(demoSessionId, {
+      days,
+      from,
+      to,
+      materialId,
+      type,
+      cursor,
+      limit,
+    });
+    paginatedMovements = demoResult.movements as unknown as MovementData[];
+    materials = demoResult.materials.map((m) => ({ id: m.id, name: m.name }));
+    hasNextPage = demoResult.hasNextPage;
+    nextCursor = demoResult.nextCursor;
+    totalCount = demoResult.totalCount;
+  } else {
+    const dateFilter = buildDateFilter(days, from, to);
+    const where: Prisma.MovementWhereInput = {};
 
-  // Clone where for the query to avoid affecting the total counts
-  const queryWhere = { ...where };
+    if (dateFilter) where.date = dateFilter;
+    if (materialId) where.materialId = materialId;
+    if (type) where.type = type as "IN" | "OUT";
 
-  // Add cursor condition for pagination (get items before the cursor)
-  if (cursor) {
-    queryWhere.id = { lt: cursor };
-  }
+    // Clone where for the query to avoid affecting the total counts
+    const queryWhere = { ...where };
 
-  const [movementsResult, materials] = await Promise.all([
-    prisma.movement.findMany({
-      where: queryWhere,
-      orderBy: [
-        { date: "desc" },
-        { id: "desc" }
-      ],
-      take: limit + 1, // Get one extra to check if there's a next page
-      include: {
-        material: {
-          include: {
-            category: true,
-            location: true,
-          },
-        },
-        user: true
-      },
-    }),
-    prisma.material.findMany({ orderBy: { name: "asc" } }),
-  ]);
-
-  // Map the movements to the correct type for the MovementItem component
-  const movements = movementsResult.map(m => ({
-    id: m.id,
-    type: m.type === "IN" ? "IN" : "OUT" as const,
-    quantity: m.quantity,
-    date: m.date,
-    notes: m.notes,
-    material: {
-      id: m.material.id,
-      name: m.material.name,
-      unit: m.material.unit,
-      currentStock: m.material.currentStock,
-      minStock: m.material.minStock,
-      categoryId: m.material.categoryId,
-      locationId: m.material.locationId,
-      category: m.material.category ? { name: m.material.category.name } : null,
-      location: m.material.location ? { name: m.material.location.name } : null,
-    },
-    user: {
-      id: m.user.id,
-      name: m.user.name,
+    // Add cursor condition for pagination (get items before the cursor)
+    if (cursor) {
+      queryWhere.id = { lt: cursor };
     }
-  })) as MovementData[];
 
-  // Check if there's a next page
-  const hasNextPage = movements.length > limit;
-  const paginatedMovements = hasNextPage ? movements.slice(0, -1) : movements;
+    const [movementsResult, materialsResult] = await Promise.all([
+      prisma.movement.findMany({
+        where: queryWhere,
+        orderBy: [
+          { date: "desc" },
+          { id: "desc" }
+        ],
+        take: limit + 1, // Get one extra to check if there's a next page
+        include: {
+          material: {
+            include: {
+              category: true,
+              location: true,
+            },
+          },
+          user: true
+        },
+      }),
+      prisma.material.findMany({ orderBy: { name: "asc" } }),
+    ]);
 
-  // Get the cursor for the next page (last item's ID)
-  const nextCursor = hasNextPage && paginatedMovements.length > 0
-    ? paginatedMovements[paginatedMovements.length - 1].id
-    : null;
+    // Map the movements to the correct type for the MovementItem component
+    const movements = movementsResult.map(m => ({
+      id: m.id,
+      type: m.type === "IN" ? "IN" : "OUT" as const,
+      quantity: m.quantity,
+      date: m.date,
+      notes: m.notes,
+      material: {
+        id: m.material.id,
+        name: m.material.name,
+        unit: m.material.unit,
+        currentStock: m.material.currentStock,
+        minStock: m.material.minStock,
+        categoryId: m.material.categoryId,
+        locationId: m.material.locationId,
+        category: m.material.category ? { name: m.material.category.name } : null,
+        location: m.material.location ? { name: m.material.location.name } : null,
+      },
+      user: {
+        id: m.user.id,
+        name: m.user.name,
+      }
+    })) as MovementData[];
 
-  // For total count, we still need it for the UI (though it's less critical for cursor-based pagination)
-  const [totalCount] = await Promise.all([
-    prisma.movement.count({ where }),
-    prisma.movement.aggregate({ where: { ...where, type: "IN" }, _sum: { quantity: true } }),
-    prisma.movement.aggregate({ where: { ...where, type: "OUT" }, _sum: { quantity: true } }),
-  ]);
+    hasNextPage = movements.length > limit;
+    paginatedMovements = hasNextPage ? movements.slice(0, -1) : movements;
+    nextCursor = hasNextPage && paginatedMovements.length > 0
+      ? paginatedMovements[paginatedMovements.length - 1].id
+      : null;
+    materials = materialsResult;
+
+    const [countResult] = await Promise.all([
+      prisma.movement.count({ where }),
+      prisma.movement.aggregate({ where: { ...where, type: "IN" }, _sum: { quantity: true } }),
+      prisma.movement.aggregate({ where: { ...where, type: "OUT" }, _sum: { quantity: true } }),
+    ]);
+    totalCount = countResult;
+  }
 
   return (
     <>
@@ -186,7 +213,11 @@ export default async function MovementsHistoryPage({
     <div>
       <ScrollToTop />
       <Suspense fallback={<HistoryLoading />}>
-        <MovementsHistoryContent searchParams={searchParams} />
+        <MovementsHistoryContent
+          searchParams={searchParams}
+          isDemo={session.user.isDemo}
+          demoSessionId={session.user.demoSessionId}
+        />
       </Suspense>
     </div>
   )

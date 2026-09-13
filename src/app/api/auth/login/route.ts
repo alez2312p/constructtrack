@@ -42,7 +42,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: result.error }, { status: 401 });
     }
 
-    await setAuthCookies(result.accessToken, result.refreshToken);
+    await setAuthCookies(
+      result.accessToken,
+      result.refreshToken,
+      result.isDemo,
+      result.demoSessionId,
+    );
 
     // Devolver JSON con éxito y URL de redirección
     return NextResponse.json({

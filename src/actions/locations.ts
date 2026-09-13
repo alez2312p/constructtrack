@@ -4,10 +4,22 @@ import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { locationSchema, updateLocationSchema } from "../../lib/validation/schemas";
 import { assertSession } from "@/lib/auth/assert-session";
+import { getSession } from "@/lib/auth/get-session";
 import { rateLimit } from "@/lib/rate-limit";
+import {
+  getDemoLocations,
+  getDemoLocationsForSelect,
+  createDemoLocation,
+  updateDemoLocation,
+  deleteDemoLocation,
+} from "@/lib/demo/demo-store";
 
 export async function getLocations() {
   try {
+    const session = await getSession();
+    if (session?.user?.isDemo) {
+      return await getDemoLocations(session.user.demoSessionId);
+    }
     return await prisma.location.findMany({
       orderBy: { name: "asc" },
     });
@@ -22,7 +34,7 @@ export async function createLocation(formData: FormData) {
   const session = await assertSession();
 
   // Rate limiting
-  if (rateLimit) {
+  if (!session.user.isDemo && rateLimit) {
     const { success } = await rateLimit.mutation.limit(session.user.id);
     if (!success) {
       return { error: "Demasiadas solicitudes. Intenta de nuevo en un minuto." };
@@ -43,6 +55,16 @@ export async function createLocation(formData: FormData) {
     }
 
     const { name, description } = validatedFields.data;
+
+    if (session.user.isDemo) {
+      await createDemoLocation(session.user.demoSessionId, {
+        name: name.trim(),
+        description: description?.trim() || null,
+      });
+      revalidatePath("/locations");
+      revalidatePath("/inventory");
+      return { success: true };
+    }
 
     await prisma.location.create({
       data: { 
@@ -65,7 +87,7 @@ export async function updateLocation(id: string, formData: FormData) {
   const session = await assertSession();
 
   // Rate limiting
-  if (rateLimit) {
+  if (!session.user.isDemo && rateLimit) {
     const { success } = await rateLimit.mutation.limit(session.user.id);
     if (!success) {
       return { error: "Demasiadas solicitudes. Intenta de nuevo en un minuto." };
@@ -87,6 +109,17 @@ export async function updateLocation(id: string, formData: FormData) {
     }
 
     const { name, description } = validatedFields.data;
+
+    if (session.user.isDemo) {
+      const res = await updateDemoLocation(session.user.demoSessionId, id, {
+        name: name !== undefined ? name.trim() : undefined,
+        description: description !== undefined ? description?.trim() || null : undefined,
+      });
+      if (res.error) return { error: res.error };
+      revalidatePath("/locations");
+      revalidatePath("/inventory");
+      return { success: true };
+    }
 
     const updateData: Record<string, unknown> = { id };
 
@@ -117,11 +150,19 @@ export async function deleteLocation(id: string) {
   const session = await assertSession();
 
   // Rate limiting
-  if (rateLimit) {
+  if (!session.user.isDemo && rateLimit) {
     const { success } = await rateLimit.mutation.limit(session.user.id);
     if (!success) {
       return { error: "Demasiadas solicitudes. Intenta de nuevo en un minuto." };
     }
+  }
+
+  if (session.user.isDemo) {
+    const res = await deleteDemoLocation(session.user.demoSessionId, id);
+    if (res.error) return { error: res.error };
+    revalidatePath("/locations");
+    revalidatePath("/inventory");
+    return { success: true };
   }
 
   try {
@@ -135,6 +176,7 @@ export async function deleteLocation(id: string) {
 
     await prisma.location.delete({ where: { id } });
     revalidatePath("/locations");
+    revalidatePath("/inventory");
     return { success: true };
   } catch (error) {
     console.error("Error deleting location:", error);
@@ -144,6 +186,10 @@ export async function deleteLocation(id: string) {
 
 export async function getLocationsForSelect() {
   try {
+    const session = await getSession();
+    if (session?.user?.isDemo) {
+      return await getDemoLocationsForSelect(session.user.demoSessionId);
+    }
     return await prisma.location.findMany({
       select: { id: true, name: true },
       orderBy: { name: "asc" },
