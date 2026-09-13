@@ -10,6 +10,7 @@ import {
   registerDemoMovement,
   getDemoMaterialsForSelect,
 } from '@/lib/demo/demo-store';
+import { logAuditEvent } from './audit';
 
 export async function registerMovement(formData: FormData) {
   // 1️⃣ Validate session
@@ -30,6 +31,11 @@ export async function registerMovement(formData: FormData) {
     quantity: formData.get('quantity'),
     date: formData.get('date'),
     notes: formData.get('notes'),
+    projectId: formData.get('projectId') || null,
+    supplierId: formData.get('supplierId') || null,
+    unitPrice: formData.get('unitPrice') ? Number(formData.get('unitPrice')) : null,
+    receiverName: formData.get('receiverName') || null,
+    signature: formData.get('signature') || null,
   });
 
   if (!validated.success) {
@@ -42,7 +48,18 @@ export async function registerMovement(formData: FormData) {
     };
   }
 
-  const { materialId, type, quantity, date, notes } = validated.data;
+  const {
+    materialId,
+    type,
+    quantity,
+    date,
+    notes,
+    projectId,
+    supplierId,
+    unitPrice,
+    receiverName,
+    signature,
+  } = validated.data;
 
   // Demo mode: update in-memory/Redis state and return without touching DB
   if (session.user.isDemo) {
@@ -56,6 +73,11 @@ export async function registerMovement(formData: FormData) {
           quantity,
           date: movementDate,
           notes: notes ?? null,
+          projectId: projectId ?? null,
+          supplierId: supplierId ?? null,
+          unitPrice: unitPrice ?? null,
+          receiverName: receiverName ?? null,
+          signature: signature ?? null,
         },
         session.user.id
       );
@@ -148,14 +170,19 @@ export async function registerMovement(formData: FormData) {
     const movementDate = new Date(year, month - 1, day, hour, minute, 0, 0);
 
     // Create movement
-    await tx.movement.create({
+    const createdMovement = await tx.movement.create({
       data: {
         type,
         quantity,
         date: movementDate,
         notes: notes ?? null,
+        unitPrice: unitPrice ?? (material.unitCost || 0),
+        receiverName: receiverName ?? null,
+        signature: signature ?? null,
         materialId,
         userId: session.user.id,
+        projectId: projectId ?? null,
+        supplierId: supplierId ?? null,
       },
     });
 
@@ -164,6 +191,14 @@ export async function registerMovement(formData: FormData) {
       where: { id: materialId },
       data: { currentStock: newStock },
     });
+
+    await logAuditEvent(
+      type === "IN" ? "STOCK_IN" : "STOCK_OUT",
+      "Movement",
+      createdMovement.id,
+      `${type === "IN" ? "Entrada" : "Salida"} de ${quantity} ${material.unit} de ${material.name}`,
+      session.user.id
+    );
 
     return {
       success: true,

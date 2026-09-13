@@ -18,6 +18,8 @@ export interface Material {
   unit: string;
   currentStock: number;
   minStock: number;
+  unitCost?: number | null;
+  sku?: string | null;
   categoryId: string | null;
   locationId: string | null;
   active?: boolean;
@@ -69,6 +71,13 @@ export interface MovementData {
   quantity: number;
   date: Date;
   notes: string | null;
+  unitPrice?: number | null;
+  receiverName?: string | null;
+  signature?: string | null;
+  projectId?: string | null;
+  project?: { id: string; name: string; code?: string | null } | null;
+  supplierId?: string | null;
+  supplier?: { id: string; name: string } | null;
   material: Material;
   user: User;
 }

@@ -3,7 +3,18 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { logout } from "@/actions/auth";
-import { Package, LayoutDashboard, ArrowLeftRight, LogOut, Menu, Folder, MapPin, Settings } from "lucide-react";
+import {
+  Package,
+  LayoutDashboard,
+  ArrowLeftRight,
+  LogOut,
+  Menu,
+  Folder,
+  MapPin,
+  Settings,
+  Building2,
+  Truck,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
@@ -14,6 +25,8 @@ const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/inventory", label: "Inventario", icon: Package },
   { href: "/movements", label: "Movimientos", icon: ArrowLeftRight },
+  { href: "/projects", label: "Obras", icon: Building2 },
+  { href: "/suppliers", label: "Proveedores", icon: Truck },
   { href: "/categories", label: "Categorías", icon: Folder },
   { href: "/locations", label: "Ubicaciones", icon: MapPin },
   { href: "/settings", label: "Configuración", icon: Settings },

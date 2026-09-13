@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollToTop } from "@/components/ui/scroll-to-top";
-import { Package, MapPin } from "lucide-react";
+import { Package, MapPin, Building2, Truck, Users, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth/get-session";
@@ -10,10 +10,19 @@ import SettingsLoading from "./loading";
 function SettingsContent() {
   const settingsSections = [
     {
-      title: "Gestión de Datos",
+      title: "Catálogos y Operación",
       items: [
-        { label: "Categorías", description: "Administra las categorías de materiales", href: "/categories", icon: Package },
-        { label: "Ubicaciones", description: "Administra las ubicaciones de almacenaje", href: "/locations", icon: MapPin },
+        { label: "Categorías", description: "Administra las familias y clasificaciones de materiales", href: "/categories", icon: Package },
+        { label: "Ubicaciones", description: "Administra los almacenes, estanterías y zonas de acopio", href: "/locations", icon: MapPin },
+        { label: "Obras y Proyectos", description: "Control de frentes de obra y centros de costos de salida", href: "/projects", icon: Building2 },
+        { label: "Proveedores", description: "Directorio de proveedores y trazabilidad de compras", href: "/suppliers", icon: Truck },
+      ],
+    },
+    {
+      title: "Control y Seguridad",
+      items: [
+        { label: "Usuarios y Roles", description: "Gestiona cuentas de usuario y permisos (Admin, Operador, Auditor)", href: "/settings/users", icon: Users },
+        { label: "Pista de Auditoría", description: "Historial completo e inmutable de eventos y cambios", href: "/settings/audit", icon: ShieldCheck },
       ],
     },
   ];

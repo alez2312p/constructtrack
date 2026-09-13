@@ -3,15 +3,33 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { registerMovement, getMaterialsForSelect } from "@/actions/movements";
+import { getProjectsForSelect } from "@/actions/projects";
+import { getSuppliersForSelect } from "@/actions/suppliers";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Package, Plus, Minus, AlertTriangle, CheckCircle, ChevronDown, X } from "lucide-react";
+import {
+  Package,
+  Plus,
+  Minus,
+  AlertTriangle,
+  CheckCircle,
+  ChevronDown,
+  X,
+  QrCode,
+  Building2,
+  Truck,
+  DollarSign,
+  UserCheck,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
+import { CameraScannerModal } from "./camera-scanner-modal";
+import { SignaturePad } from "./signature-pad";
 
 interface Material {
   id: string;
@@ -19,15 +37,24 @@ interface Material {
   unit: string;
   currentStock: number;
   minStock: number;
+  sku?: string | null;
   category?: { name: string } | null;
   location?: { name: string } | null;
 }
 
-
 export function MovementForm() {
   const router = useRouter();
   const [materials, setMaterials] = useState<Material[]>([]);
+  const [projects, setProjects] = useState<Array<{ id: string; name: string; code?: string | null }>>([]);
+  const [suppliers, setSuppliers] = useState<Array<{ id: string; name: string; taxId?: string | null }>>([]);
   const [selectedMaterial, setSelectedMaterial] = useState<Material | null>(null);
+  const [selectedProject, setSelectedProject] = useState<string>("");
+  const [selectedSupplier, setSelectedSupplier] = useState<string>("");
+  const [unitPrice, setUnitPrice] = useState("");
+  const [receiverName, setReceiverName] = useState("");
+  const [signature, setSignature] = useState("");
+  const [scannerOpen, setScannerOpen] = useState(false);
+
   const [type, setType] = useState<"IN" | "OUT">("IN");
   const [quantity, setQuantity] = useState("");
   const [date, setDate] = useState(() => {
@@ -47,11 +74,17 @@ export function MovementForm() {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    async function loadMaterials() {
-      const data = await getMaterialsForSelect();
-      setMaterials(data);
+    async function loadData() {
+      const [matData, projData, suppData] = await Promise.all([
+        getMaterialsForSelect(),
+        getProjectsForSelect(),
+        getSuppliersForSelect(),
+      ]);
+      setMaterials(matData as Material[]);
+      setProjects(projData);
+      setSuppliers(suppData);
     }
-    loadMaterials();
+    loadData();
   }, []);
 
   useEffect(() => {
@@ -64,6 +97,22 @@ export function MovementForm() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  const handleScanSuccess = (scannedVal: string) => {
+    const found = materials.find(
+      (m) =>
+        m.id === scannedVal ||
+        m.name.toLowerCase() === scannedVal.toLowerCase() ||
+        m.sku === scannedVal
+    );
+    if (found) {
+      setSelectedMaterial(found);
+      setMaterialSearch(found.name);
+      toast.success(`Material escaneado: ${found.name}`);
+    } else {
+      toast.error(`Código no coincide con ningún material registrado: ${scannedVal}`);
+    }
+  };
+
   const filteredMaterials = materials.filter((m) =>
     m.name.toLowerCase().includes(materialSearch.toLowerCase())
   );
@@ -72,6 +121,11 @@ export function MovementForm() {
     formData.set("type", type);
     formData.set("date", date);
     formData.set("materialId", selectedMaterial?.id || "");
+    if (type === "OUT" && selectedProject) formData.set("projectId", selectedProject);
+    if (type === "IN" && selectedSupplier) formData.set("supplierId", selectedSupplier);
+    if (unitPrice) formData.set("unitPrice", unitPrice);
+    if (type === "OUT" && receiverName) formData.set("receiverName", receiverName);
+    if (type === "OUT" && signature) formData.set("signature", signature);
 
     const qty = parseFloat(quantity);
     if (type === "OUT" && selectedMaterial && qty > selectedMaterial.currentStock) {
@@ -129,6 +183,11 @@ export function MovementForm() {
 
       setSelectedMaterial(null);
       setQuantity("");
+      setSelectedProject("");
+      setSelectedSupplier("");
+      setUnitPrice("");
+      setReceiverName("");
+      setSignature("");
       // Reset date to current datetime-local value
       setDate(() => {
         const now = new Date();
@@ -156,43 +215,63 @@ export function MovementForm() {
 
   return (
     <form action={handleSubmit} className="space-y-6">
-      {/* Material Selection with Custom Search */}
+      {/* Material Selection with Custom Search and Camera Scanner */}
       <div className="space-y-2 relative" ref={containerRef}>
         <Label>Material</Label>
 
-        {/* Search Input */}
-        <div className="relative">
-          <Input
-            ref={inputRef}
-            placeholder="Buscar material..."
-            value={selectedMaterial ? selectedMaterial.name : materialSearch}
-            onChange={(e) => {
-              setMaterialSearch(e.target.value);
-              setSelectedMaterial(null);
-              setIsOpen(true);
-            }}
-            onFocus={() => setIsOpen(true)}
-            className="h-12 pr-10"
-            autoComplete="off"
-          />
-          <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1">
-            {selectedMaterial && (
-              <Button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setSelectedMaterial(null);
-                  setMaterialSearch("");
-                  inputRef.current?.focus();
-                }}
-                className="p-1 bg-muted rounded"
-              >
-                <X className="h-4 w-4 text-muted-foreground" />
-              </Button>
-            )}
-            <ChevronDown className={cn("h-4 w-4 text-muted-foreground transition-transform", isOpen && "rotate-180")} />
+        <div className="flex gap-2 items-center">
+          {/* Search Input */}
+          <div className="relative flex-1">
+            <Input
+              ref={inputRef}
+              placeholder="Buscar material..."
+              value={selectedMaterial ? selectedMaterial.name : materialSearch}
+              onChange={(e) => {
+                setMaterialSearch(e.target.value);
+                setSelectedMaterial(null);
+                setIsOpen(true);
+              }}
+              onFocus={() => setIsOpen(true)}
+              className="h-12 pr-10"
+              autoComplete="off"
+            />
+            <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1">
+              {selectedMaterial && (
+                <Button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedMaterial(null);
+                    setMaterialSearch("");
+                    inputRef.current?.focus();
+                  }}
+                  className="p-1 bg-muted rounded"
+                >
+                  <X className="h-4 w-4 text-muted-foreground" />
+                </Button>
+              )}
+              <ChevronDown className={cn("h-4 w-4 text-muted-foreground transition-transform", isOpen && "rotate-180")} />
+            </div>
           </div>
+
+          {/* QR Camera Scanner Trigger */}
+          <Button
+            type="button"
+            variant="outline"
+            className="h-12 px-3 gap-1.5 shrink-0"
+            onClick={() => setScannerOpen(true)}
+            title="Escanear QR con cámara"
+          >
+            <QrCode className="h-5 w-5 text-primary" />
+            <span className="hidden sm:inline text-xs font-medium">Escanear</span>
+          </Button>
         </div>
+
+        <CameraScannerModal
+          open={scannerOpen}
+          onOpenChange={setScannerOpen}
+          onScanSuccess={handleScanSuccess}
+        />
 
         {/* Dropdown Results */}
         {isOpen && (
@@ -311,6 +390,92 @@ export function MovementForm() {
             ))}
           </div>
         </div>
+
+        {/* Enterprise Fields: IN (Supplier & Unit Price) */}
+        {type === "IN" && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-lg bg-muted/40 border">
+            <div className="space-y-2">
+              <Label htmlFor="supplier" className="flex items-center gap-1.5 text-xs font-medium">
+                <Truck className="h-4 w-4 text-primary" />
+                Proveedor de Origen (opcional)
+              </Label>
+              <Select value={selectedSupplier} onValueChange={(val) => setSelectedSupplier(val || "")}>
+                <SelectTrigger id="supplier" className="h-10 bg-background">
+                  <SelectValue placeholder="Seleccionar proveedor" />
+                </SelectTrigger>
+                <SelectContent>
+                  {suppliers.map((s) => (
+                    <SelectItem key={s.id} value={s.id}>
+                      {s.name} {s.taxId ? `(${s.taxId})` : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="unitPrice" className="flex items-center gap-1.5 text-xs font-medium">
+                <DollarSign className="h-4 w-4 text-emerald-600" />
+                Costo Unitario ($) (opcional)
+              </Label>
+              <Input
+                id="unitPrice"
+                name="unitPrice"
+                type="number"
+                step="0.01"
+                min="0"
+                placeholder="0.00"
+                value={unitPrice}
+                onChange={(e) => setUnitPrice(e.target.value)}
+                className="h-10 bg-background"
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Enterprise Fields: OUT (Project, Receiver, Signature) */}
+        {type === "OUT" && (
+          <div className="space-y-4 p-4 rounded-lg bg-muted/40 border">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="project" className="flex items-center gap-1.5 text-xs font-medium">
+                  <Building2 className="h-4 w-4 text-primary" />
+                  Obra / Frente de Destino (opcional)
+                </Label>
+                <Select value={selectedProject} onValueChange={(val) => setSelectedProject(val || "")}>
+                  <SelectTrigger id="project" className="h-10 bg-background">
+                    <SelectValue placeholder="Seleccionar obra" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {projects.map((p) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.name} {p.code ? `(${p.code})` : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="receiverName" className="flex items-center gap-1.5 text-xs font-medium">
+                  <UserCheck className="h-4 w-4 text-primary" />
+                  Responsable / Receptor (opcional)
+                </Label>
+                <Input
+                  id="receiverName"
+                  name="receiverName"
+                  placeholder="Nombre de quien recibe"
+                  value={receiverName}
+                  onChange={(e) => setReceiverName(e.target.value)}
+                  className="h-10 bg-background"
+                />
+              </div>
+            </div>
+
+            {/* Canvas Signature Pad */}
+            <SignaturePad value={signature} onChange={setSignature} />
+          </div>
+        )}
 
         {/* Date and Time */}
         <div className="space-y-2">

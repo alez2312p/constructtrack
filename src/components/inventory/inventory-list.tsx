@@ -15,6 +15,9 @@ import { MaterialDesktopTable } from "./MaterialDesktopTable";
 import { CommonProps, InventoryListProps } from "../../lib/type";
 import DeleteMaterialModal from "./DeleteMaterialModal";
 import { Button } from "../ui/button";
+import { BatchImportModal } from "./batch-import-modal";
+import { BatchQRPrintModal } from "./batch-qr-print-modal";
+import { PhysicalInventoryPrintModal } from "./physical-inventory-print-modal";
 
 export function InventoryList({
   materials,
@@ -79,9 +82,18 @@ export function InventoryList({
   return (
     <div className="space-y-4 flex flex-col h-[calc(100vh-88px)] md:h-[calc(100vh-20px)]">
       {/* Header Section */}
-      <div className="flex flex-row items-center justify-between gap-4 shrink-0">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0">
         <h1 className="text-2xl font-bold tracking-tight">Inventario</h1>
-        <MaterialForm {...commonProps} />
+        <div className="flex flex-wrap items-center gap-2">
+          <PhysicalInventoryPrintModal
+            materials={materials}
+            categories={categories}
+            locations={locations}
+          />
+          <BatchQRPrintModal materials={materials} />
+          <BatchImportModal />
+          <MaterialForm {...commonProps} />
+        </div>
       </div>
 
       {/* Search & Filter Bar */}

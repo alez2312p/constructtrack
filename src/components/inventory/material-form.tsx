@@ -142,6 +142,30 @@ export function MaterialForm({ material, userId, trigger, categories = [], locat
                 defaultValue={material?.minStock ?? 0}
               />
             </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label htmlFor="sku">SKU / Código</Label>
+                <Input
+                  id="sku"
+                  name="sku"
+                  placeholder="Ej: MAT-001"
+                  defaultValue={material?.sku || ""}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="unitCost">Costo Unitario ($)</Label>
+                <Input
+                  id="unitCost"
+                  name="unitCost"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  placeholder="0.00"
+                  defaultValue={material?.unitCost ?? ""}
+                />
+              </div>
+            </div>
             {!material && (
               <div className="space-y-2">
                 <Label htmlFor="initialStock">Stock Inicial (opcional)</Label>

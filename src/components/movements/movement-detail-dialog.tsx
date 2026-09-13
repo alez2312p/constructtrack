@@ -1,9 +1,13 @@
+import { useState } from "react";
 import { MovementData } from "@/lib/type";
-import { ArrowUpLeft, ArrowDownLeft, Package, Calendar, User, FileText } from "lucide-react";
+import { ArrowUpLeft, ArrowDownLeft, Package, Calendar, User, FileText, Printer } from "lucide-react";
 import { Dialog, DialogTitle, DialogContent, DialogHeader } from "../ui/dialog";
 import { Badge } from "../ui/badge";
+import { Button } from "../ui/button";
+import { MovementReceiptModal } from "./movement-receipt-modal";
 
 export function MovementDetailDialog({ movement, open, onOpenChange }: { movement: MovementData | null; open: boolean; onOpenChange: (open: boolean) => void }) {
+    const [receiptOpen, setReceiptOpen] = useState(false);
     if (!movement) return null;
 
     return (
@@ -78,6 +82,53 @@ export function MovementDetailDialog({ movement, open, onOpenChange }: { movemen
                             <p className="font-medium">{movement.user.name}</p>
                         </div>
                     </div>
+                    {movement.project && (
+                        <div className="flex items-center gap-3">
+                            <div className="h-5 w-5 flex items-center justify-center text-muted-foreground font-semibold text-xs">
+                                🏗️
+                            </div>
+                            <div>
+                                <p className="text-sm text-muted-foreground">Obra / Destino</p>
+                                <p className="font-medium">{movement.project.name} {movement.project.code ? `(${movement.project.code})` : ""}</p>
+                            </div>
+                        </div>
+                    )}
+
+                    {movement.supplier && (
+                        <div className="flex items-center gap-3">
+                            <div className="h-5 w-5 flex items-center justify-center text-muted-foreground font-semibold text-xs">
+                                🚚
+                            </div>
+                            <div>
+                                <p className="text-sm text-muted-foreground">Proveedor</p>
+                                <p className="font-medium">{movement.supplier.name}</p>
+                            </div>
+                        </div>
+                    )}
+
+                    {movement.receiverName && (
+                        <div className="flex items-center gap-3">
+                            <User className="h-5 w-5 text-muted-foreground" />
+                            <div>
+                                <p className="text-sm text-muted-foreground">Receptor / Responsable</p>
+                                <p className="font-medium">{movement.receiverName}</p>
+                            </div>
+                        </div>
+                    )}
+
+                    {movement.unitPrice !== undefined && movement.unitPrice !== null && (
+                        <div className="flex items-center gap-3">
+                            <div className="h-5 w-5 flex items-center justify-center text-muted-foreground font-semibold text-xs">
+                                💰
+                            </div>
+                            <div>
+                                <p className="text-sm text-muted-foreground">Costo / Valor</p>
+                                <p className="font-medium">
+                                    ${movement.unitPrice.toLocaleString("es-ES", { minimumFractionDigits: 2 })} c/u (Total: ${(movement.unitPrice * movement.quantity).toLocaleString("es-ES", { minimumFractionDigits: 2 })})
+                                </p>
+                            </div>
+                        </div>
+                    )}
 
                     {movement.notes && (
                         <div className="flex items-start gap-3">
@@ -88,7 +139,34 @@ export function MovementDetailDialog({ movement, open, onOpenChange }: { movemen
                             </div>
                         </div>
                     )}
+
+                    {movement.signature && (
+                        <div className="space-y-1.5 pt-2 border-t">
+                            <p className="text-sm text-muted-foreground font-medium">Firma Digital de Recepción:</p>
+                            <div className="border rounded bg-white p-2 flex justify-center max-w-[280px]">
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img src={movement.signature} alt="Firma digital" className="max-h-24 object-contain" />
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="pt-3 border-t">
+                        <Button
+                            variant="outline"
+                            className="w-full gap-2 border-primary/40 hover:bg-primary/10 text-primary font-medium"
+                            onClick={() => setReceiptOpen(true)}
+                        >
+                            <Printer className="h-4 w-4" />
+                            Imprimir Vale / Comprobante
+                        </Button>
+                    </div>
                 </div>
+
+                <MovementReceiptModal
+                    movement={movement}
+                    open={receiptOpen}
+                    onOpenChange={setReceiptOpen}
+                />
             </DialogContent>
         </Dialog>
     );

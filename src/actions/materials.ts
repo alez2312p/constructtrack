@@ -20,7 +20,10 @@ import {
   createDemoMaterial,
   updateDemoMaterial,
   deleteDemoMaterial,
+  getDemoInventoryValuation,
+  createDemoMaterialsBatch,
 } from "@/lib/demo/demo-store";
+import { logAuditEvent } from "./audit";
 
 export async function getMaterials(cursor?: string, limit: number = 50) {
   try {
@@ -33,6 +36,8 @@ export async function getMaterials(cursor?: string, limit: number = 50) {
         unit: string;
         currentStock: number;
         minStock: number;
+        unitCost?: number | null;
+        sku?: string | null;
         active: boolean;
         deletedAt: Date | null;
         categoryId: string | null;
@@ -75,6 +80,8 @@ export async function getMaterialById(id: string) {
         unit: demoMat.unit,
         currentStock: demoMat.currentStock,
         minStock: demoMat.minStock,
+        unitCost: demoMat.unitCost ?? 0,
+        sku: demoMat.sku ?? null,
         createdAt: demoMat.createdAt,
         updatedAt: demoMat.updatedAt,
         active: demoMat.active,
@@ -112,6 +119,8 @@ export async function createMaterial(formData: FormData, userId?: string) {
       unit: formData.get("unit"),
       minStock: formData.get("minStock"),
       initialStock: formData.get("initialStock"),
+      unitCost: formData.get("unitCost"),
+      sku: formData.get("sku"),
       categoryId: formData.get("categoryId"),
       locationId: formData.get("locationId"),
     });
@@ -140,12 +149,13 @@ export async function createMaterial(formData: FormData, userId?: string) {
       return { success: true };
     }
 
-    const { name, unit, minStock, initialStock, categoryId, locationId } =
+    const { name, unit, minStock, initialStock, unitCost, sku, categoryId, locationId } =
       validatedFields.data;
 
     const validUserId = userId && userId.trim().length > 0 ? userId : undefined;
 
     const initialStockValue = initialStock ?? 0;
+    const unitCostValue = unitCost ?? 0;
     if (initialStockValue > 0 && !validUserId) {
       return { error: "Se requiere usuario autenticado para stock inicial" };
     }
@@ -167,32 +177,40 @@ export async function createMaterial(formData: FormData, userId?: string) {
       unit,
       minStock: minStock ?? 0,
       currentStock: initialStockValue,
+      unitCost: unitCostValue,
+      sku: sku?.trim() || null,
       active: true,
       ...(categoryId && { categoryId }),
       ...(locationId && { locationId }),
     };
 
+    let createdId = "";
     if (initialStockValue > 0 && validUserId) {
       await prisma.$transaction(async (tx) => {
         const material = await tx.material.create({
           data: materialData,
         });
+        createdId = material.id;
 
         await tx.movement.create({
           data: {
             type: "IN",
             quantity: initialStockValue,
             notes: "Stock inicial",
+            unitPrice: unitCostValue,
             materialId: material.id,
             userId: validUserId!,
           },
         });
       });
     } else if (initialStockValue === 0) {
-      await prisma.material.create({
+      const material = await prisma.material.create({
         data: materialData,
       });
+      createdId = material.id;
     }
+
+    await logAuditEvent("CREATE_MATERIAL", "Material", createdId, `Material creado: ${name}`, validUserId);
 
     revalidatePath("/inventory");
     revalidatePath("/dashboard");
@@ -230,6 +248,8 @@ export async function updateMaterial(id: string, formData: FormData) {
       name: formData.get("name"),
       unit: formData.get("unit"),
       minStock: formData.get("minStock"),
+      unitCost: formData.get("unitCost"),
+      sku: formData.get("sku"),
       categoryId: formData.get("categoryId"),
       locationId: formData.get("locationId"),
     });
@@ -248,13 +268,15 @@ export async function updateMaterial(id: string, formData: FormData) {
       return { success: true };
     }
 
-    const { name, unit, minStock, categoryId, locationId } =
+    const { name, unit, minStock, unitCost, sku, categoryId, locationId } =
       validatedFields.data;
 
     const updateData: Record<string, unknown> = {
       name,
       unit,
       minStock: minStock ?? 0,
+      unitCost: unitCost ?? 0,
+      sku: sku?.trim() || null,
     };
 
     if (categoryId !== null && categoryId !== undefined) {
@@ -269,10 +291,12 @@ export async function updateMaterial(id: string, formData: FormData) {
       updateData.locationId = null;
     }
 
-    await prisma.material.update({
+    const updated = await prisma.material.update({
       where: { id },
       data: updateData,
     });
+
+    await logAuditEvent("UPDATE_MATERIAL", "Material", id, `Material actualizado: ${updated.name}`, session.user.id);
 
     revalidatePath("/inventory");
     revalidatePath("/dashboard");
@@ -304,13 +328,16 @@ export async function deleteMaterial(id: string) {
   }
 
   try {
-    await prisma.material.update({
+    const deleted = await prisma.material.update({
       where: { id },
       data: {
         active: false,
         deletedAt: new Date(),
       },
     });
+
+    await logAuditEvent("DELETE_MATERIAL", "Material", id, `Material eliminado: ${deleted.name}`, session.user.id);
+
     revalidatePath("/inventory");
     revalidatePath("/dashboard");
     return { success: true };
@@ -467,3 +494,100 @@ export async function getTotalMaterialsCount() {
     return 0;
   }
 }
+
+export async function getInventoryValuation(): Promise<number> {
+  try {
+    const session = await getSession();
+    if (session?.user?.isDemo) {
+      return await getDemoInventoryValuation(session.user.demoSessionId);
+    }
+
+    const materials = await prisma.material.findMany({
+      where: { active: true },
+      select: { currentStock: true, unitCost: true },
+    });
+
+    const total = materials.reduce(
+      (sum, m) => sum + m.currentStock * (m.unitCost || 0),
+      0
+    );
+    return Math.round(total * 100) / 100;
+  } catch (error) {
+    console.error("Error calculating inventory valuation:", error);
+    return 0;
+  }
+}
+
+export async function importMaterialsBatch(
+  items: Array<{
+    name: string;
+    unit: string;
+    minStock?: number;
+    initialStock?: number;
+    unitCost?: number;
+    sku?: string | null;
+    categoryId?: string | null;
+    locationId?: string | null;
+  }>
+) {
+  const session = await assertSession();
+  if (session.user.role === "AUDITOR") {
+    return { error: "Los auditores no tienen permiso para importar materiales" };
+  }
+
+  if (session.user.isDemo) {
+    const res = await createDemoMaterialsBatch(session.user.demoSessionId, items, session.user.id);
+    revalidatePath("/inventory");
+    revalidatePath("/dashboard");
+    return res;
+  }
+
+  try {
+    let count = 0;
+    await prisma.$transaction(async (tx) => {
+      for (const item of items) {
+        if (!item.name || !item.unit) continue;
+        const initialStock = item.initialStock ?? 0;
+        const unitCost = item.unitCost ?? 0;
+
+        const mat = await tx.material.create({
+          data: {
+            name: item.name.trim(),
+            unit: item.unit.trim(),
+            minStock: item.minStock ?? 0,
+            currentStock: initialStock,
+            unitCost,
+            sku: item.sku?.trim() || null,
+            categoryId: item.categoryId || null,
+            locationId: item.locationId || null,
+            active: true,
+          },
+        });
+
+        if (initialStock > 0) {
+          await tx.movement.create({
+            data: {
+              type: "IN",
+              quantity: initialStock,
+              notes: "Importación masiva - Stock inicial",
+              unitPrice: unitCost,
+              materialId: mat.id,
+              userId: session.user.id,
+            },
+          });
+        }
+        count++;
+      }
+    });
+
+    await logAuditEvent("BATCH_IMPORT_MATERIALS", "Material", null, `Importación masiva de ${count} materiales`, session.user.id);
+
+    revalidatePath("/inventory");
+    revalidatePath("/dashboard");
+    return { success: true, count };
+  } catch (error) {
+    console.error("Error batch importing materials:", error);
+    return { error: "Error al importar los materiales" };
+  }
+}
+
