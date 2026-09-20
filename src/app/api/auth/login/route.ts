@@ -49,9 +49,12 @@ export async function POST(request: Request) {
       result.demoSessionId,
     );
 
-    // Devolver JSON con éxito y URL de redirección
+    // Devolver JSON con éxito, tokens y usuario para mobile y URL de redirección
     return NextResponse.json({
       success: true,
+      accessToken: result.accessToken,
+      refreshToken: result.refreshToken,
+      user: result.user,
       redirectTo: "/dashboard",
     });
   } catch (err) {

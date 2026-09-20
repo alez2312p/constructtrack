@@ -81,3 +81,35 @@ export interface MovementData {
   material: Material;
   user: User;
 }
+
+export interface DashboardAnalyticsData {
+  stockHealth: {
+    normal: number;
+    low: number;
+    empty: number;
+    total: number;
+  };
+  dailyOperations: Array<{
+    date: string;
+    entradas: number;
+    salidas: number;
+    total: number;
+  }>;
+  categoryValuation: Array<{
+    name: string;
+    value: number;
+    itemCount: number;
+    percentage: number;
+  }>;
+  topMovingMaterials: Array<{
+    name: string;
+    unit: string;
+    quantity: number;
+    movementsCount: number;
+  }>;
+  projectDispatches: Array<{
+    name: string;
+    count: number;
+    percentage: number;
+  }>;
+}

@@ -12,6 +12,7 @@ import {
   DemoAuditLog,
 } from "./seed-data";
 import { startOfDay, endOfDay, subDays, isAfter, isBefore } from "date-fns";
+import { DashboardAnalyticsData } from "@/lib/type";
 
 const globalForDemo = globalThis as unknown as {
   demoSessions: Map<string, { state: DemoState; expiresAt: number }> | undefined;
@@ -505,6 +506,124 @@ export async function getDemoInventoryValuation(sessionId?: string) {
     0
   );
   return Math.round(totalValue * 100) / 100;
+}
+
+export async function getDemoDashboardAnalytics(sessionId?: string): Promise<DashboardAnalyticsData> {
+  const state = await getDemoState(sessionId);
+  const activeMaterials = state.materials.filter((m) => m.active && !m.deletedAt);
+
+  // 1. Stock Health (Normal, Low, Empty)
+  const empty = activeMaterials.filter((m) => m.currentStock === 0).length;
+  const low = activeMaterials.filter((m) => m.currentStock > 0 && m.currentStock <= m.minStock).length;
+  const normal = activeMaterials.filter((m) => m.currentStock > m.minStock).length;
+  const total = activeMaterials.length;
+
+  // 2. Category Valuation (Real money distribution in $)
+  const catValMap = new Map<string, { value: number; count: number }>();
+  let totalInventoryValue = 0;
+
+  for (const m of activeMaterials) {
+    const cat = m.categoryId ? state.categories.find((c) => c.id === m.categoryId) : null;
+    const catName = cat?.name || "General";
+    const val = m.currentStock * (m.unitCost || 0);
+    totalInventoryValue += val;
+
+    const existing = catValMap.get(catName) || { value: 0, count: 0 };
+    catValMap.set(catName, {
+      value: existing.value + val,
+      count: existing.count + 1,
+    });
+  }
+
+  const categoryValuation = Array.from(catValMap.entries())
+    .map(([name, { value, count }]) => ({
+      name,
+      value: Math.round(value * 100) / 100,
+      itemCount: count,
+      percentage: totalInventoryValue > 0 ? Math.round((value / totalInventoryValue) * 100) : 0,
+    }))
+    .sort((a, b) => b.value - a.value);
+
+  // 3. Daily Operations (last 7 continuous calendar days)
+  const days: string[] = [];
+  const dayLabels: string[] = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = subDays(new Date(), i);
+    const dayKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    const label = `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}`;
+    days.push(dayKey);
+    dayLabels.push(label);
+  }
+
+  const dailyOpsMap = new Map<string, { entradas: number; salidas: number }>();
+  days.forEach((k) => dailyOpsMap.set(k, { entradas: 0, salidas: 0 }));
+
+  for (const mov of state.movements) {
+    const d = new Date(mov.date);
+    const k = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    if (dailyOpsMap.has(k)) {
+      const entry = dailyOpsMap.get(k)!;
+      if (mov.type === "IN") entry.entradas++;
+      else entry.salidas++;
+    }
+  }
+
+  const dailyOperations = days.map((k, idx) => {
+    const { entradas, salidas } = dailyOpsMap.get(k) || { entradas: 0, salidas: 0 };
+    return {
+      date: dayLabels[idx],
+      entradas,
+      salidas,
+      total: entradas + salidas,
+    };
+  });
+
+  // 4. Top Moving Materials (highest dispatched quantity to construction sites)
+  const matDispatchesMap = new Map<string, { name: string; unit: string; quantity: number; movementsCount: number }>();
+  for (const mov of state.movements) {
+    if (mov.type === "OUT") {
+      const mat = state.materials.find((m) => m.id === mov.materialId);
+      const name = mat?.name || "Material";
+      const unit = mat?.unit || "unidad";
+      const existing = matDispatchesMap.get(mov.materialId) || { name, unit, quantity: 0, movementsCount: 0 };
+      existing.quantity += mov.quantity;
+      existing.movementsCount += 1;
+      matDispatchesMap.set(mov.materialId, existing);
+    }
+  }
+
+  const topMovingMaterials = Array.from(matDispatchesMap.values())
+    .sort((a, b) => b.quantity - a.quantity)
+    .slice(0, 5);
+
+  // 5. Project Dispatches
+  const projectMap = new Map<string, number>();
+  let totalProjectDispatches = 0;
+  for (const mov of state.movements) {
+    if (mov.type === "OUT") {
+      const proj = mov.projectId ? state.projects?.find((p) => p.id === mov.projectId) : null;
+      const projName = proj?.name || "Almacén Central / General";
+      projectMap.set(projName, (projectMap.get(projName) || 0) + 1);
+      totalProjectDispatches++;
+    }
+  }
+
+  const projectDispatches = Array.from(projectMap.entries())
+    .map(([name, count]) => ({
+      name,
+      count,
+      percentage: totalProjectDispatches > 0 ? Math.round((count / totalProjectDispatches) * 100) : 0,
+    }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 5);
+
+  return {
+    stockHealth: { normal, low, empty, total },
+    dailyOperations,
+    categoryValuation,
+    topMovingMaterials,
+    projectDispatches,
+  };
 }
 
 export async function createDemoMaterial(

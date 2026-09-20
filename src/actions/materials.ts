@@ -7,7 +7,7 @@ import {
   updateMaterialSchema,
 } from "../lib/validation/schemas";
 import { Prisma } from "@prisma/client";
-import { startOfDay, endOfDay } from "date-fns";
+import { startOfDay, endOfDay, subDays } from "date-fns";
 import { rateLimit } from "@/lib/rate-limit";
 import { assertSession } from "@/lib/auth/assert-session";
 import { getSession } from "@/lib/auth/get-session";
@@ -21,9 +21,11 @@ import {
   updateDemoMaterial,
   deleteDemoMaterial,
   getDemoInventoryValuation,
+  getDemoDashboardAnalytics,
   createDemoMaterialsBatch,
 } from "@/lib/demo/demo-store";
 import { logAuditEvent } from "./audit";
+import { DashboardAnalyticsData } from "@/lib/type";
 
 export async function getMaterials(cursor?: string, limit: number = 50) {
   try {
@@ -515,6 +517,149 @@ export async function getInventoryValuation(): Promise<number> {
   } catch (error) {
     console.error("Error calculating inventory valuation:", error);
     return 0;
+  }
+}
+
+export async function getDashboardAnalytics(): Promise<DashboardAnalyticsData> {
+  try {
+    const session = await getSession();
+    if (session?.user?.isDemo) {
+      return await getDemoDashboardAnalytics(session.user.demoSessionId);
+    }
+
+    const [activeMaterials, recentMovements] = await Promise.all([
+      prisma.material.findMany({
+        where: { active: true },
+        include: { category: true },
+      }),
+      prisma.movement.findMany({
+        where: { date: { gte: subDays(new Date(), 45) } },
+        orderBy: [{ date: "asc" }],
+        include: {
+          material: true,
+          project: true,
+        },
+      }),
+    ]);
+
+    // 1. Stock Health
+    const empty = activeMaterials.filter((m) => m.currentStock === 0).length;
+    const low = activeMaterials.filter((m) => m.currentStock > 0 && m.currentStock <= m.minStock).length;
+    const normal = activeMaterials.filter((m) => m.currentStock > m.minStock).length;
+    const total = activeMaterials.length;
+
+    // 2. Category Valuation ($ distribution)
+    const catValMap = new Map<string, { value: number; count: number }>();
+    let totalInventoryValue = 0;
+
+    for (const m of activeMaterials) {
+      const catName = m.category?.name || "General";
+      const val = m.currentStock * (m.unitCost || 0);
+      totalInventoryValue += val;
+
+      const existing = catValMap.get(catName) || { value: 0, count: 0 };
+      catValMap.set(catName, {
+        value: existing.value + val,
+        count: existing.count + 1,
+      });
+    }
+
+    const categoryValuation = Array.from(catValMap.entries())
+      .map(([name, { value, count }]) => ({
+        name,
+        value: Math.round(value * 100) / 100,
+        itemCount: count,
+        percentage: totalInventoryValue > 0 ? Math.round((value / totalInventoryValue) * 100) : 0,
+      }))
+      .sort((a, b) => b.value - a.value);
+
+    // 3. Daily Operations (continuous last 7 days)
+    const days: string[] = [];
+    const dayLabels: string[] = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = subDays(new Date(), i);
+      const dayKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      const label = `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}`;
+      days.push(dayKey);
+      dayLabels.push(label);
+    }
+
+    const dailyOpsMap = new Map<string, { entradas: number; salidas: number }>();
+    days.forEach((k) => dailyOpsMap.set(k, { entradas: 0, salidas: 0 }));
+
+    for (const mov of recentMovements) {
+      const d = new Date(mov.date);
+      const k = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      if (dailyOpsMap.has(k)) {
+        const entry = dailyOpsMap.get(k)!;
+        if (mov.type === "IN") entry.entradas++;
+        else entry.salidas++;
+      }
+    }
+
+    const dailyOperations = days.map((k, idx) => {
+      const { entradas, salidas } = dailyOpsMap.get(k) || { entradas: 0, salidas: 0 };
+      return {
+        date: dayLabels[idx],
+        entradas,
+        salidas,
+        total: entradas + salidas,
+      };
+    });
+
+    // 4. Top Moving Materials (highest dispatched quantity to construction sites)
+    const matDispatchesMap = new Map<string, { name: string; unit: string; quantity: number; movementsCount: number }>();
+    for (const mov of recentMovements) {
+      if (mov.type === "OUT") {
+        const name = mov.material.name;
+        const unit = mov.material.unit;
+        const existing = matDispatchesMap.get(mov.materialId) || { name, unit, quantity: 0, movementsCount: 0 };
+        existing.quantity += mov.quantity;
+        existing.movementsCount += 1;
+        matDispatchesMap.set(mov.materialId, existing);
+      }
+    }
+
+    const topMovingMaterials = Array.from(matDispatchesMap.values())
+      .sort((a, b) => b.quantity - a.quantity)
+      .slice(0, 5);
+
+    // 5. Project Dispatches
+    const projectMap = new Map<string, number>();
+    let totalProjectDispatches = 0;
+    for (const mov of recentMovements) {
+      if (mov.type === "OUT") {
+        const projName = mov.project?.name || "Almacén Central / General";
+        projectMap.set(projName, (projectMap.get(projName) || 0) + 1);
+        totalProjectDispatches++;
+      }
+    }
+
+    const projectDispatches = Array.from(projectMap.entries())
+      .map(([name, count]) => ({
+        name,
+        count,
+        percentage: totalProjectDispatches > 0 ? Math.round((count / totalProjectDispatches) * 100) : 0,
+      }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5);
+
+    return {
+      stockHealth: { normal, low, empty, total },
+      dailyOperations,
+      categoryValuation,
+      topMovingMaterials,
+      projectDispatches,
+    };
+  } catch (error) {
+    console.error("Error calculating dashboard analytics:", error);
+    return {
+      stockHealth: { normal: 0, low: 0, empty: 0, total: 0 },
+      dailyOperations: [],
+      categoryValuation: [],
+      topMovingMaterials: [],
+      projectDispatches: [],
+    };
   }
 }
 

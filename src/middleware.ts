@@ -20,6 +20,18 @@ export async function middleware(request: NextRequest) {
     path.startsWith(route),
   );
 
+  if (request.method === "OPTIONS") {
+    return new NextResponse(null, {
+      status: 200,
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET,OPTIONS,PATCH,DELETE,POST,PUT",
+        "Access-Control-Allow-Headers":
+          "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization, Idempotency-Key",
+      },
+    });
+  }
+
   if (!isProtectedRoute) {
     return NextResponse.next();
   }
@@ -54,6 +66,7 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
+    "/api/:path*",
     "/dashboard/:path*",
     "/inventory/:path*",
     "/movements/:path*",

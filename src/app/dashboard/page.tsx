@@ -4,6 +4,7 @@ import {
   getLowStockMaterials,
   getRecentMovements,
   getInventoryValuation,
+  getDashboardAnalytics,
 } from "@/actions/materials";
 import { Package, AlertTriangle, DollarSign } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,12 +19,12 @@ import DashboardLoading from "./loading";
 import { MovementData } from "@/lib/type";
 
 async function DashboardContent({ userId }: { userId: string }) {
-  const [totalMaterials, allLowStock, rawMovements, totalValuation, trendMovements] = await Promise.all([
+  const [totalMaterials, allLowStock, rawMovements, totalValuation, analytics] = await Promise.all([
     getTotalMaterialsCount(),
     getLowStockMaterials(),
     getRecentMovements(true),
     getInventoryValuation(),
-    getRecentMovements(false, 60),
+    getDashboardAnalytics(),
   ]);
 
   const todayMovements = rawMovements.map((m) => ({
@@ -74,7 +75,7 @@ async function DashboardContent({ userId }: { userId: string }) {
       </div>
 
       {/* Interactive Charts */}
-      <DashboardCharts movements={trendMovements} />
+      <DashboardCharts analytics={analytics} />
 
       {/* Stock Alerts */}
       {allLowStock.length > 0 && (

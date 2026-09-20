@@ -18,6 +18,7 @@ import { Button } from "../ui/button";
 import { BatchImportModal } from "./batch-import-modal";
 import { BatchQRPrintModal } from "./batch-qr-print-modal";
 import { PhysicalInventoryPrintModal } from "./physical-inventory-print-modal";
+import { InventoryPagination } from "./inventory-pagination";
 
 export function InventoryList({
   materials,
@@ -30,12 +31,29 @@ export function InventoryList({
   const router = useRouter();
   const [search, setSearch] = useState(initialSearch);
   const [filter, setFilter] = useState(initialFilter);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
+  const handleSearchChange = (val: string) => {
+    setSearch(val);
+    setCurrentPage(1);
+  };
+
+  const handleFilterChange = (f: string) => {
+    setFilter(f);
+    setCurrentPage(1);
+  };
+
+  const handlePageSizeChange = (size: number) => {
+    setPageSize(size);
+    setCurrentPage(1);
+  };
 
   const filteredMaterials = useMemo(() => {
-    // Descomenta la siguiente línea para forzar el modo "sin productos" y ver el diseño
-    // return [];
     return materials.filter((m) => {
-      const matchesSearch = m.name.toLowerCase().includes(search.toLowerCase());
+      const matchesSearch =
+        m.name.toLowerCase().includes(search.toLowerCase()) ||
+        (m.sku && m.sku.toLowerCase().includes(search.toLowerCase()));
       const isLow = m.currentStock <= m.minStock;
       if (filter === "low") return matchesSearch && isLow;
       if (filter === "empty") return matchesSearch && m.currentStock === 0;
@@ -43,6 +61,15 @@ export function InventoryList({
       return matchesSearch;
     });
   }, [materials, search, filter]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredMaterials.length / pageSize));
+  const safePage = Math.min(currentPage, totalPages);
+  const startIndex = (safePage - 1) * pageSize;
+  const endIndex = Math.min(startIndex + pageSize, filteredMaterials.length);
+
+  const paginatedMaterials = useMemo(() => {
+    return filteredMaterials.slice(startIndex, endIndex);
+  }, [filteredMaterials, startIndex, endIndex]);
 
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
@@ -80,7 +107,7 @@ export function InventoryList({
   };
 
   return (
-    <div className="space-y-4 flex flex-col h-[calc(100vh-88px)] md:h-[calc(100vh-20px)]">
+    <div className="space-y-4">
       {/* Header Section */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0">
         <h1 className="text-2xl font-bold tracking-tight">Inventario</h1>
@@ -101,9 +128,9 @@ export function InventoryList({
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Buscar materiales..."
+            placeholder="Buscar materiales por nombre o SKU..."
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => handleSearchChange(e.target.value)}
             className="pl-9 h-11 md:h-10"
           />
         </div>
@@ -117,7 +144,7 @@ export function InventoryList({
           ].map((f) => (
             <Button
               key={f.id}
-              onClick={() => setFilter(f.id)}
+              onClick={() => handleFilterChange(f.id)}
               className={cn(
                 "px-4 py-1.5 rounded-full font-medium transition-all shrink-0 border",
                 filter === f.id
@@ -131,18 +158,30 @@ export function InventoryList({
         </div>
       </div>
 
-      {/* Mobile View (Scrollable Cards) */}
-      <div className="md:hidden flex-1 overflow-y-auto space-y-3 ">
+      {/* Mobile View */}
+      <div className="md:hidden space-y-3">
         {filteredMaterials.length === 0 ? (
           <EmptyState />
         ) : (
-          filteredMaterials.map((m) => (
+          paginatedMaterials.map((m) => (
             <MaterialMobileCard key={m.id} material={m} {...commonProps} />
           ))
         )}
       </div>
 
-      <MaterialDesktopTable materials={filteredMaterials} {...commonProps} />
+      <MaterialDesktopTable materials={paginatedMaterials} {...commonProps} />
+
+      {/* Pagination Controls */}
+      <InventoryPagination
+        currentPage={safePage}
+        totalPages={totalPages}
+        pageSize={pageSize}
+        totalItems={filteredMaterials.length}
+        startIndex={startIndex}
+        endIndex={endIndex}
+        onPageChange={setCurrentPage}
+        onPageSizeChange={handlePageSizeChange}
+      />
 
       {/* Delete Confirmation Dialog */}
       <DeleteMaterialModal

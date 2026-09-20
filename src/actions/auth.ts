@@ -21,6 +21,7 @@ export type LoginResult =
       success: true;
       accessToken: string;
       refreshToken: string;
+      user?: { id: string; name: string; email: string; role: string };
       isDemo?: boolean;
       demoSessionId?: string;
     }
@@ -121,6 +122,12 @@ export async function login(formData: FormData): Promise<LoginResult> {
     success: true,
     accessToken,
     refreshToken,
+    user: {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+    },
   };
 }
 
