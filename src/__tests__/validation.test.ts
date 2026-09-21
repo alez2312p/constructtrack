@@ -46,7 +46,7 @@ describe('Validation Schemas', () => {
       materialId: 'mat-1',
       type: 'IN',
       quantity: 50,
-      date: '2026-03-18',
+      date: '2026-03-18T10:00',
       notes: 'Test movement',
     });
     
@@ -55,7 +55,7 @@ describe('Validation Schemas', () => {
       materialId: 'mat-1',
       type: 'IN',
       quantity: 50,
-      date: '2026-03-18',
+      date: '2026-03-18T10:00',
       notes: 'Test movement',
     });
   });

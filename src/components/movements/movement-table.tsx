@@ -2,19 +2,23 @@
 
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { MovementData } from "@/lib/type";
 import { MovementDetailDialog } from "./movement-detail-dialog";
+import { MovementReceiptModal } from "./movement-receipt-modal";
+import { Printer } from "lucide-react";
 
 interface MovementTableProps {
   movements: MovementData[];
 }
 
-
 export function MovementTable({ movements }: MovementTableProps) {
   const [selectedMovement, setSelectedMovement] = useState<MovementData | null>(null);
   const [open, setOpen] = useState(false);
+  const [receiptMovement, setReceiptMovement] = useState<MovementData | null>(null);
+  const [receiptOpen, setReceiptOpen] = useState(false);
 
   const handleRowClick = (movement: MovementData) => {
     setSelectedMovement(movement);
@@ -34,12 +38,13 @@ export function MovementTable({ movements }: MovementTableProps) {
                 <TableHead>Cantidad</TableHead>
                 <TableHead>Usuario</TableHead>
                 <TableHead>Notas</TableHead>
+                <TableHead className="text-right">Comprobante</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {movements.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                     No hay movimientos
                   </TableCell>
                 </TableRow>
@@ -93,6 +98,20 @@ export function MovementTable({ movements }: MovementTableProps) {
                         <span className="text-muted-foreground">-</span>
                       )}
                     </TableCell>
+                    <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0 text-muted-foreground hover:text-primary hover:bg-primary/10"
+                        title="Imprimir Vale / Comprobante"
+                        onClick={() => {
+                          setReceiptMovement(movement);
+                          setReceiptOpen(true);
+                        }}
+                      >
+                        <Printer className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
                   </TableRow>
                 ))
               )}
@@ -105,6 +124,12 @@ export function MovementTable({ movements }: MovementTableProps) {
         movement={selectedMovement}
         open={open}
         onOpenChange={setOpen}
+      />
+
+      <MovementReceiptModal
+        movement={receiptMovement}
+        open={receiptOpen}
+        onOpenChange={setReceiptOpen}
       />
     </>
   );

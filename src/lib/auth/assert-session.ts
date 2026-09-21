@@ -3,7 +3,14 @@
 import { cookies } from 'next/headers';
 import { verifyAccessToken } from './tokens-edge';
 
-export type Session = { user: { id: string; role: string } };
+export type Session = {
+  user: {
+    id: string;
+    role: string;
+    isDemo?: boolean;
+    demoSessionId?: string;
+  };
+};
 
 /**
  * Asserts that the request contains a valid access token.
@@ -23,5 +30,14 @@ export async function assertSession(): Promise<Session> {
     throw new Error('Unauthenticated: invalid or expired access token');
   }
 
-  return { user: { id: payload.id, role: payload.role } };
+  const demoSessionId = payload.demoSessionId || cookieStore.get('demoSessionId')?.value;
+
+  return {
+    user: {
+      id: payload.id,
+      role: payload.role,
+      isDemo: payload.isDemo,
+      demoSessionId,
+    },
+  };
 }

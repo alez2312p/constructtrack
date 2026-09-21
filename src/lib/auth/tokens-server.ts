@@ -14,10 +14,12 @@ const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET);
 export async function generateAccessToken(payload: {
   id: string;
   role: string;
+  isDemo?: boolean;
+  demoSessionId?: string;
 }): Promise<string> {
   return new SignJWT(payload)
     .setProtectedHeader({ alg: "HS256" })
-    .setExpirationTime(ACCESS_TOKEN_EXPIRES_IN)
+    .setExpirationTime(payload.isDemo ? "2h" : ACCESS_TOKEN_EXPIRES_IN)
     .sign(JWT_SECRET);
 }
 
@@ -76,30 +78,44 @@ export async function verifyToken(
  * Sets authentication cookies for access and refresh tokens
  * @param accessToken The JWT access token
  * @param refreshToken The refresh token
+ * @param isDemo Whether this is a demo session
+ * @param demoSessionId Optional demo session ID
  */
 export async function setAuthCookies(
   accessToken: string,
   refreshToken: string,
+  isDemo?: boolean,
+  demoSessionId?: string,
 ) {
   const cookieStore = await cookies();
 
-  // Access token cookie (httpOnly, short-lived)
+  // Access token cookie (httpOnly)
   cookieStore.set("accessToken", accessToken, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "strict",
     path: "/",
-    maxAge: 60 * 15, // 15 minutes
+    maxAge: isDemo ? 60 * 60 * 2 : 60 * 15, // 2 hours for demo, 15m for regular
   });
 
-  // Refresh token cookie (httpOnly, secure, sameSite: strict, long-lived)
+  // Refresh token cookie
   cookieStore.set("refreshToken", refreshToken, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "strict",
     path: "/",
-    maxAge: 60 * 60 * 24 * 30, // 30 days
+    maxAge: isDemo ? 60 * 60 * 2 : 60 * 60 * 24 * 30, // 2 hours for demo, 30 days regular
   });
+
+  if (isDemo && demoSessionId) {
+    cookieStore.set("demoSessionId", demoSessionId, {
+      httpOnly: false,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      path: "/",
+      maxAge: 60 * 60 * 2,
+    });
+  }
 }
 
 /**
@@ -109,6 +125,7 @@ export async function clearAuthCookies() {
   const cookieStore = await cookies();
   cookieStore.delete("accessToken");
   cookieStore.delete("refreshToken");
+  cookieStore.delete("demoSessionId");
 }
 
 /**

@@ -11,10 +11,14 @@ export async function getSession() {
 
   if (!payload) return null;
 
+  const demoSessionId = payload.demoSessionId || cookieStore.get("demoSessionId")?.value;
+
   return {
     user: {
       id: payload.id as string,
       role: payload.role as string,
+      isDemo: Boolean(payload.isDemo),
+      demoSessionId,
     },
   };
 }

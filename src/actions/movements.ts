@@ -4,14 +4,20 @@ import { prisma } from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
 import { movementSchema } from '@/lib/validation/schemas';
 import { assertSession } from '@/lib/auth/assert-session';
+import { getSession } from '@/lib/auth/get-session';
 import { rateLimit } from '@/lib/rate-limit';
+import {
+  registerDemoMovement,
+  getDemoMaterialsForSelect,
+} from '@/lib/demo/demo-store';
+import { logAuditEvent } from './audit';
 
 export async function registerMovement(formData: FormData) {
   // 1️⃣ Validate session
   const session = await assertSession(); // throws if not authenticated
 
   // 1b️⃣ Rate limiting
-  if (rateLimit) {
+  if (!session.user.isDemo && rateLimit) {
     const { success } = await rateLimit.mutation.limit(session.user.id);
     if (!success) {
       return { error: "Demasiadas solicitudes. Intenta de nuevo en un minuto." };
@@ -25,6 +31,11 @@ export async function registerMovement(formData: FormData) {
     quantity: formData.get('quantity'),
     date: formData.get('date'),
     notes: formData.get('notes'),
+    projectId: formData.get('projectId') || null,
+    supplierId: formData.get('supplierId') || null,
+    unitPrice: formData.get('unitPrice') ? Number(formData.get('unitPrice')) : null,
+    receiverName: formData.get('receiverName') || null,
+    signature: formData.get('signature') || null,
   });
 
   if (!validated.success) {
@@ -37,7 +48,51 @@ export async function registerMovement(formData: FormData) {
     };
   }
 
-  const { materialId, type, quantity, date, notes } = validated.data;
+  const {
+    materialId,
+    type,
+    quantity,
+    date,
+    notes,
+    projectId,
+    supplierId,
+    unitPrice,
+    receiverName,
+    signature,
+  } = validated.data;
+
+  // Demo mode: update in-memory/Redis state and return without touching DB
+  if (session.user.isDemo) {
+    try {
+      const movementDate = new Date(date);
+      const res = await registerDemoMovement(
+        session.user.demoSessionId,
+        {
+          materialId,
+          type,
+          quantity,
+          date: movementDate,
+          notes: notes ?? null,
+          projectId: projectId ?? null,
+          supplierId: supplierId ?? null,
+          unitPrice: unitPrice ?? null,
+          receiverName: receiverName ?? null,
+          signature: signature ?? null,
+        },
+        session.user.id
+      );
+
+      revalidatePath('/inventory');
+      revalidatePath('/dashboard');
+      revalidatePath('/movements');
+      revalidatePath('/movements/history');
+
+      return res;
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Error al registrar movimiento';
+      return { error: message };
+    }
+  }
 
   // 3️⃣ Use a transaction to prevent race conditions
   const result = await prisma.$transaction(async (tx) => {
@@ -115,14 +170,19 @@ export async function registerMovement(formData: FormData) {
     const movementDate = new Date(year, month - 1, day, hour, minute, 0, 0);
 
     // Create movement
-    await tx.movement.create({
+    const createdMovement = await tx.movement.create({
       data: {
         type,
         quantity,
         date: movementDate,
         notes: notes ?? null,
+        unitPrice: unitPrice ?? (material.unitCost || 0),
+        receiverName: receiverName ?? null,
+        signature: signature ?? null,
         materialId,
         userId: session.user.id,
+        projectId: projectId ?? null,
+        supplierId: supplierId ?? null,
       },
     });
 
@@ -131,6 +191,14 @@ export async function registerMovement(formData: FormData) {
       where: { id: materialId },
       data: { currentStock: newStock },
     });
+
+    await logAuditEvent(
+      type === "IN" ? "STOCK_IN" : "STOCK_OUT",
+      "Movement",
+      createdMovement.id,
+      `${type === "IN" ? "Entrada" : "Salida"} de ${quantity} ${material.unit} de ${material.name}`,
+      session.user.id
+    );
 
     return {
       success: true,
@@ -155,6 +223,21 @@ export async function registerMovement(formData: FormData) {
 
 export async function getMaterialsForSelect() {
   try {
+    const session = await getSession();
+    if (session?.user?.isDemo) {
+      const demoMaterials = await getDemoMaterialsForSelect(session.user.demoSessionId);
+      return demoMaterials as unknown as Array<{
+        id: string;
+        name: string;
+        unit: string;
+        currentStock: number;
+        minStock: number;
+        createdAt: Date;
+        category: { name: string } | null;
+        location: { name: string } | null;
+      }>;
+    }
+
     const result = await prisma.material.findMany({
       select: {
         id: true,

@@ -2,13 +2,16 @@ import { Suspense } from "react";
 import {
   getTotalMaterialsCount,
   getLowStockMaterials,
-  getRecentMovements
+  getRecentMovements,
+  getInventoryValuation,
+  getDashboardAnalytics,
 } from "@/actions/materials";
-import { Package, AlertTriangle } from "lucide-react";
+import { Package, AlertTriangle, DollarSign } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StockAlerts } from "@/components/dashboard/stock-alerts";
 import { SummaryCard } from "@/components/dashboard/summary-card";
 import { MovementItem } from "@/components/movements/movement-card";
+import { DashboardCharts } from "@/components/dashboard/dashboard-charts";
 import { ScrollToTop } from "@/components/ui/scroll-to-top";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth/get-session";
@@ -16,10 +19,12 @@ import DashboardLoading from "./loading";
 import { MovementData } from "@/lib/type";
 
 async function DashboardContent({ userId }: { userId: string }) {
-  const [totalMaterials, allLowStock, rawMovements] = await Promise.all([
+  const [totalMaterials, allLowStock, rawMovements, totalValuation, analytics] = await Promise.all([
     getTotalMaterialsCount(),
     getLowStockMaterials(),
     getRecentMovements(true),
+    getInventoryValuation(),
+    getDashboardAnalytics(),
   ]);
 
   const todayMovements = rawMovements.map((m) => ({
@@ -40,11 +45,17 @@ async function DashboardContent({ userId }: { userId: string }) {
     <>
       <h1 className="text-2xl font-bold">Dashboard</h1>
       {/* Summary Cards */}
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <SummaryCard
-          title="Total"
+          title="Total Materiales"
           value={totalMaterials}
           icon={Package}
+          href="/inventory"
+        />
+        <SummaryCard
+          title="Valorización"
+          value={`$${totalValuation.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+          icon={DollarSign}
           href="/inventory"
         />
         <SummaryCard
@@ -62,6 +73,9 @@ async function DashboardContent({ userId }: { userId: string }) {
           variant={outOfStockCount > 0 ? "danger" : "default"}
         />
       </div>
+
+      {/* Interactive Charts */}
+      <DashboardCharts analytics={analytics} />
 
       {/* Stock Alerts */}
       {allLowStock.length > 0 && (

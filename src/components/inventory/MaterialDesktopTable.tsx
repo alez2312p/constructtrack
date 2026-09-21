@@ -7,9 +7,9 @@ import { StockBadge } from "./StockBadge";
 import { CommonProps, Material } from "../../lib/type";
 
 export const MaterialDesktopTable = ({ materials, ...props }: { materials: Material[] } & CommonProps) => (
-    <div className="hidden md:flex flex-col flex-1 min-h-0">
-        <Card className="py-0 flex-1 flex flex-col overflow-hidden">
-            <CardContent className="p-0 flex-1 overflow-auto relative border rounded-lg">
+    <div className="hidden md:block">
+        <Card>
+            <CardContent className="p-0">
                 <Table>
                     <TableHeader className="sticky top-0 z-10 bg-background">
                         <TableRow>
