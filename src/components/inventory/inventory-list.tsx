@@ -53,7 +53,8 @@ export function InventoryList({
     return materials.filter((m) => {
       const matchesSearch =
         m.name.toLowerCase().includes(search.toLowerCase()) ||
-        (m.sku && m.sku.toLowerCase().includes(search.toLowerCase()));
+        (m.sku && m.sku.toLowerCase().includes(search.toLowerCase())) ||
+        (m.id && m.id.toLowerCase().includes(search.toLowerCase()));
       const isLow = m.currentStock <= m.minStock;
       if (filter === "low") return matchesSearch && isLow;
       if (filter === "empty") return matchesSearch && m.currentStock === 0;

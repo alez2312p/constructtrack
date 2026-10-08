@@ -23,6 +23,10 @@ export function MaterialQRModal({ material, open, onOpenChange }: MaterialQRModa
         id: material.id,
         sku: material.sku || material.id,
         name: material.name,
+        unit: material.unit,
+        category: material.category?.name || undefined,
+        location: material.location?.name || undefined,
+        unitCost: material.unitCost || undefined,
       });
 
       QRCode.toDataURL(payload, {

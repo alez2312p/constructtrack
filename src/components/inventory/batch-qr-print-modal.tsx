@@ -70,6 +70,10 @@ export function BatchQRPrintModal({ materials }: BatchQRPrintModalProps) {
             id: m.id,
             sku: m.sku || m.id,
             name: m.name,
+            unit: m.unit,
+            category: m.category?.name || undefined,
+            location: m.location?.name || undefined,
+            unitCost: m.unitCost || undefined,
           });
           const url = await QRCode.toDataURL(payload, {
             width: 250,

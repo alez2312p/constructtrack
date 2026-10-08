@@ -1,216 +1,271 @@
-# ConstructTrack - Sistema de Gestión de Inventario de Construcción
+# ConstructTrack 🏗️ - Sistema Integral de Gestión de Inventario y Control de Obras
 
-## Descripción
+[![Next.js](https://img.shields.io/badge/Next.js-16.1.7-black?style=flat&logo=next.js)](https://nextjs.org/)
+[![React](https://img.shields.io/badge/React-19.2.3-blue?style=flat&logo=react)](https://react.dev/)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-v4-38bdf8?style=flat&logo=tailwindcss)](https://tailwindcss.com/)
+[![Prisma](https://img.shields.io/badge/Prisma-v7.5.0-2D3748?style=flat&logo=prisma)](https://www.prisma.io/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-v5-3178C6?style=flat&logo=typescript)](https://www.typescriptlang.org/)
+[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-ConstructTrack es un sistema completo de gestión de inventario diseñado específicamente para la industria de la construcción. Permite controlar materiales, registrar movimientos de entradas y salidas, gestionar categorías y ubicaciones, y generar alertas cuando el stock alcanza niveles críticos.
+**ConstructTrack** es una plataforma integral para el control de inventario, pañol, logística y gestión de materiales diseñada específicamente para empresas constructoras, contratistas y administradores de proyectos de edificación y obras civiles.
 
-Desarrollado con las últimas tecnologías para garantizar rendimiento, seguridad y una experiencia de usuario óptima tanto en dispositivos móviles como de escritorio.
+Digitaliza el ciclo completo de abastecimiento en obra: desde la recepción de compras de insumos por parte de proveedores, el control de existencias en almacenes físicos mediante **etiquetas y escáner QR**, hasta la entrega de materiales con **firma digital táctil** y **generación de vales oficiales**.
 
-## Stack Tecnológico
+---
 
-- **Frontend:** Next.js 15 (App Router), React 19, TypeScript, Tailwind CSS, Shadcn/ui
-- **Backend:** Next.js API Routes, Auth.js v5 (NextAuth) con Credentials Provider
-- **Base de Datos:** PostgreSQL con Prisma ORM v7 (@prisma/adapter-pg)
-- **Estado:** MVP Completo - Funcionalidades core implementadas y probadas
-- **Gestor de Paquetes:** pnpm
-- **Despliegue:** Entorno Ubuntu (local/producción)
+## 📑 Tabla de Contenidos
 
-## Características Principales
+1. [Características Destacadas](#-características-destacadas)
+2. [Stack Tecnológico](#-stack-tecnológico)
+3. [Módulos del Sistema](#-módulos-del-sistema)
+4. [Suite de Etiquetado QR e Impresión Física](#-suite-de-etiquetado-qr-e-impresión-física)
+5. [Dashboard Analítico y Control Financiero](#-dashboard-analítico-y-control-financiero)
+6. [Modo Demo Interactivo (Sin Base de Datos)](#-modo-demo-interactivo-sin-base-de-datos)
+7. [Puesta en Marcha](#-puesta-en-marcha)
+8. [Scripts Disponibles](#-scripts-disponibles)
+9. [Estructura del Proyecto](#-estructura-del-proyecto)
+10. [Documentación Técnica e Integraciones](#-documentación-técnica-e-integraciones)
+11. [Testing y Despliegue](#-testing-y-despliegue)
 
-### Autenticación y Seguridad
+---
 
-- Sistema de login con Auth.js v5 (NextAuth)
-- Roles de usuario: Administrador y Operador
-- Protección de rutas mediante middleware
-- Sesiones seguras con encriptación
+## 🚀 Características Destacadas
 
-### Gestión de Inventario
+* **Gestión de Obras y Proyectos (`/projects`):** Imputación de consumos y salidas de materiales directamente a obras activas, permitiendo controlar costes y desvíos presupuestarios.
+* **Directorio de Proveedores (`/suppliers`):** Control de compras y proveedores con datos fiscales (RUT/CIF), teléfonos y trazabilidad de ingresos.
+* **Suite de Etiquetado QR e Impresión:** Generación individual y por lotes de etiquetas QR para el almacén, lectura directa mediante cámara web o móvil, y planillas oficiales de inventario físico.
+* **Vales de Despacho con Firma Digital:** Emisión de remitos/comprobantes con captura de firma táctil manuscrita (`SignaturePad`) en pantalla o smartphone.
+* **Importación Masiva desde Excel:** Carga de catálogos e inventarios en lote mediante hojas de cálculo `.xlsx` y `.csv`.
+* **Tablero Analítico Ejecutivo:** Gráficos interactivos de operaciones, rotación de insumos, valorización monetaria de stock y distribución por obra.
+* **Modo Demo Interactivo:** Prueba la aplicación al instante en memoria sin necesidad de instalar o configurar bases de datos externas.
+* **Preparado para Aplicaciones Móviles:** Arquitectura lista para sincronización en obra con clientes móviles externos (React Native / Expo).
 
-- CRUD completo de materiales (nombre, unidad, stock mínimo, categoría, ubicación)
-- Visualización de stock actual vs mínimo
-- Alertas visuales para stock bajo y agotado
-- Historial detallado de todos los movimientos
+---
 
-### Movimientos de Stock
+## 🛠️ Stack Tecnológico
 
-- Registro de entradas y salidas de materiales
-- Validación de stock suficiente para salidas
-- Actualización transaccional del stock
-- Notas opcionales para cada movimiento
-- Exportación a CSV del historial
+| Capa | Tecnologías |
+| :--- | :--- |
+| **Frontend** | [Next.js 16](https://nextjs.org/) (App Router, React Compiler habilitado), [React 19](https://react.dev/), [TypeScript 5](https://www.typescriptlang.org/) |
+| **Estilos e Interfaz** | [Tailwind CSS v4](https://tailwindcss.com/), [Shadcn/ui](https://ui.shadcn.com/), [Base UI](https://base-ui.com/), [Lucide React](https://lucide.dev/), [Sonner](https://sonner.emilkowal.ski/) |
+| **Gráficos y Métricas** | [Recharts](https://recharts.org/) |
+| **Backend & Mutaciones** | Server Actions de Next.js, API Routes RESTful, Middleware en el Edge |
+| **Base de Datos & ORM** | [PostgreSQL](https://www.postgresql.org/) con [Prisma ORM v7](https://www.prisma.io/) (`@prisma/adapter-pg`) |
+| **Autenticación** | Sesiones JWT con [jose](https://github.com/panva/jose) y [bcryptjs](https://github.com/dcodeIO/bcrypt.js), Refresh Tokens en base de datos |
+| **Hardware & Captura** | [qrcode](https://www.npmjs.com/package/qrcode) (etiquetas), [html5-qrcode](https://github.com/mebjas/html5-qrcode) (cámara), HTML5 Canvas (firma) |
+| **Ofimática & Datos** | [xlsx](https://sheetjs.com/) (importación y exportación de hojas de cálculo Excel) |
+| **Gestor de Paquetes** | [pnpm](https://pnpm.io/) |
 
-### Administración
+---
 
-- Gestión de categorías de materiales
-- Gestión de ubicaciones de almacenamiento
-- Panel de resumen con estadísticas clave
-- Tema claro/oscuro (predeterminado en oscuro)
+## 📦 Módulos del Sistema
 
-## Comenzando
+### 1. Inventario y Materiales (`/inventory`)
+* **Ficha Técnica del Insumo:** Nombre, unidad de medida, stock actual, stock mínimo para alertas, costo unitario (`unitCost`) y código SKU.
+* **Taxonomía:** Agrupación por familias de materiales (`/categories`) y zonas físicas de bodegaje (`/locations`).
+* **Buscador Dinámico:** Búsqueda en tiempo real por nombre, SKU o identificador, con filtros rápidos (*Todos, Stock Bajo, Agotados*) y paginación rápida.
+* **Importación Masiva:** Carga de materiales vía plantillas Excel con validación de datos.
+
+### 2. Control de Movimientos y Remitos (`/movements`)
+* **Entradas (+):** Registro de recepciones asociadas a proveedores y coste de compra.
+* **Salidas (-):** Despacho de insumos a obras específicas con control estricto de stock para evitar saldos negativos.
+* **Escaneo con Cámara:** Selección inmediata del insumo enfocando la etiqueta QR física con la cámara del dispositivo.
+* **Firma de Retiro:** Captura digital de la firma del receptor en pantalla táctil para constancia de entrega.
+* **Historial Completo (`/movements/history`):** Auditoría histórica con filtros por fecha, tipo, obra y material, exportable a CSV y Excel.
+
+### 3. Obras y Proyectos (`/projects`)
+* Catálogo de obras civiles en ejecución con estado (*Activa, En Pausa, Finalizada*), código, presupuesto y dirección física.
+* Consulta de materiales y costes consumidos por cada proyecto.
+
+### 4. Proveedores (`/suppliers`)
+* Directorio de contactos y razón social de proveedores, identificador tributario (RUT / CIF / Tax ID), dirección y teléfonos.
+
+### 5. Configuración, Usuarios y Auditoría (`/settings`)
+* **Gestión de Cuentas (`/settings/users`):** Administración de usuarios con roles diferenciados:
+  * **ADMIN:** Acceso completo al sistema, configuración, obras, proveedores y auditoría.
+  * **OPERATOR:** Operación de bodega, registro de movimientos, consultas de stock y vales.
+* **Trazabilidad (`/settings/audit`):** Bitácora inmutable de eventos (`AuditLog`) para auditar altas, bajas y modificaciones realizadas por los usuarios.
+* **Tema Visual:** Soporte nativo para modo claro y modo oscuro.
+
+---
+
+## 🏷️ Suite de Etiquetado QR e Impresión Física
+
+ConstructTrack conecta la gestión digital con las operaciones físicas en el pañol de obra:
+
+```
+                    ┌────────────────────────┐
+                    │ Material en Inventario │
+                    └───────────┬────────────┘
+                                │
+        ┌───────────────────────┼───────────────────────┐
+        ▼                       ▼                       ▼
+┌───────────────┐       ┌───────────────┐       ┌───────────────┐
+│ Etiqueta QR   │       │ Planilla de   │       │ Vale Oficial  │
+│  Individual   │       │  Inventario   │       │  de Despacho  │
+│  o en Lote    │       │ Físico (Ciego)│       │ c/Firma Táctil│
+└───────────────┘       └───────────────┘       └───────────────┘
+```
+
+1. **Etiquetas QR por Lote (`BatchQRPrintModal`):** Impresión masiva en cuadrículas compatibles con hojas adhesivas y rotuladoras térmicas para etiquetar estanterías y paquetes.
+2. **Escáner QR Integrado (`CameraScannerModal`):** Permite usar la cámara de cualquier teléfono, tablet o portátil para seleccionar materiales en segundos.
+3. **Planillas de Toma de Inventario Físico (`PhysicalInventoryPrintModal`):** Genera hojas oficiales de auditoría listas para imprimir, con soporte para *Conteo Ciego* (ocultando el stock del sistema para mayor rigor en la auditoría) y casillas para firmas.
+4. **Vales y Remitos de Salida (`MovementReceiptModal`):** Comprobante formal imprimible de despacho de materiales con los datos de la obra, receptor y su firma digital estampada.
+
+---
+
+## 📊 Dashboard Analítico y Control Financiero
+
+El panel principal (`/dashboard`) ofrece visualizaciones interactivas mediante **Recharts** con cuatro modos de visualización:
+
+* **Modo Flujo & Salud:** Operaciones diarias (entradas vs. salidas) y semáforo de existencias (óptimo, bajo stock y crítico).
+* **Modo Financiero:** Capital monetario total inmovilizado en almacén y distribución del valor por categoría.
+* **Modo Rotación & Obras:** Ranking de materiales más demandados y desglose de despachos por obra/proyecto.
+* **Indicadores Clave (KPIs):** Resumen en tiempo real de insumos totales, stock crítico, proyectos activos y movimientos del día.
+
+---
+
+## 🧪 Modo Demo Interactivo (Sin Base de Datos)
+
+Para explorar, evaluar o presentar la plataforma sin tener que instalar o configurar PostgreSQL ni servicios externos, ConstructTrack incluye un **Modo Demo Interactivo en memoria**:
+
+* **0 Configuración:** No requiere bases de datos locales ni en la nube.
+* **Acceso Inmediato en 1-Clic:** En la pantalla de login (`/login`), utiliza los accesos directos:
+  * **Entrar como Administrador (Demo)**
+  * **Entrar como Operador (Demo)**
+* **Datos Realistas Precargados:** Incluye proyectos de edificación, proveedores de materiales, catálogo clasificado, historial de movimientos y auditorías de prueba.
+* **Banner de Control:** Un banner superior fijo permite conocer el estado de la sesión demo y reiniciar los datos a su estado original cuando lo desees.
+
+---
+
+## 💻 Puesta en Marcha
 
 ### Prerrequisitos
-
-- Node.js 18+
-- PostgreSQL
-- pnpm (recomendado) o npm/yarn
+* **Node.js:** Versión 18.18 o superior (recomendado 20+).
+* **pnpm:** Versión 9+ (o npm / yarn).
+* **PostgreSQL:** Base de datos relacional local o en la nube (Neon, Supabase, Render). *(Opcional si usas el Modo Demo)*.
 
 ### Instalación
 
-1. Clonar el repositorio
+1. **Clonar el repositorio:**
+   ```bash
+   git clone https://github.com/tu-usuario/constructtrack.git
+   cd constructtrack
+   ```
+
+2. **Instalar dependencias:**
+   ```bash
+   pnpm install
+   ```
+
+3. **Configurar variables de entorno:**
+   ```bash
+   cp .env.example .env
+   ```
+
+   Valores principales en `.env`:
+   ```env
+   # Base de Datos PostgreSQL
+   DATABASE_URL="postgresql://usuario:password@localhost:5432/constructtrack?schema=public"
+
+   # Secretos Criptográficos JWT (mínimo 32 caracteres)
+   ACCESS_TOKEN_SECRET="genera-un-secreto-aleatorio-muy-seguro-para-access-token"
+   REFRESH_TOKEN_SECRET="genera-un-secreto-aleatorio-muy-seguro-para-refresh-token"
+
+   # Rate Limiting con Upstash Redis (Opcional - usa memoria local si no se define)
+   UPSTASH_REDIS_URL="https://tu-instancia.upstash.io"
+   UPSTASH_REDIS_TOKEN="tu-token-de-upstash"
+   ```
+
+4. **Inicializar la Base de Datos (Omitir si usas Modo Demo):**
+   ```bash
+   pnpm prisma migrate dev
+   pnpm db:seed
+   ```
+
+5. **Iniciar en modo desarrollo:**
+   ```bash
+   pnpm dev
+   ```
+   Abre [http://localhost:3000](http://localhost:3000) en tu navegador.
+
+### Credenciales por Defecto (Base de Datos)
+* **Administrador:** `admin@constructtrack.com` / `admin123`
+* **Operador:** `operador@constructtrack.com` / `operator123`
+
+---
+
+## 📜 Scripts Disponibles
 
 ```bash
-git clone <repository-url>
-cd constructtrack
+pnpm dev        # Inicia el entorno de desarrollo
+pnpm build      # Compila la aplicación para producción
+pnpm build-bd   # Genera Prisma, corre migraciones y compila (ideal para CI/CD)
+pnpm start      # Inicia el servidor compilado en producción
+pnpm test       # Ejecuta la suite de pruebas unitarias con Jest
+pnpm lint       # Analiza el código con ESLint
+pnpm db:seed    # Puebla la base de datos con información inicial
+pnpm db:reset   # Resetea y repuebla la base de datos desde cero
 ```
 
-2. Instalar dependencias
+---
 
-```bash
-pnpm install
-```
-
-3. Configurar variables de entorno
-
-```bash
-cp .env.example .env
-# Editar .env con sus credenciales de PostgreSQL y secretos de Auth
-```
-
-4. Inicializar la base de datos
-
-```bash
-pnpm prisma migrate dev
-pnpm db:seed
-```
-
-5. Ejecutar el proyecto
-
-```bash
-pnpm dev
-```
-
-### Credenciales de Acceso
-
-- **Administrador:** admin@constructtrack.com / admin123
-- **Operador:** operador@constructtrack.com / operator123
-
-## Estructura del Proyecto
+## 📂 Estructura del Proyecto
 
 ```
 constructtrack/
+├── docs/                        # Documentación técnica avanzada
+│   ├── API.md                   # Especificación de endpoints REST y ejemplos
+│   └── ARQUITECTURA.md          # Sincronización móvil offline y seguridad
+├── prisma/
+│   ├── schema.prisma            # Modelado de datos (User, Material, Project, etc.)
+│   └── seed.ts                  # Semilla de datos de prueba
 ├── src/
-│   ├── app/                    # Next.js App Router
-│   │   ├── (routes)/           # Rutas protegidas y públicas
-│   │   ├── api/                # API routes (Auth)
-│   │   ├── dashboard/          # Panel principal
-│   │   ├── inventory/          # Gestión de materiales
-│   │   ├── movements/          # Registro e historial de movimientos
-│   │   ├── categories/         # Gestión de categorías
-│   │   ├── locations/          # Gestión de ubicaciones
-│   │   └── settings/           # Configuración del sistema
-│   ├── actions/                # Server Actions para mutaciones de datos
-│   ├── components/             # Componentes reutilizables de UI
-│   │   ├── ui/                 # Componentes primitivos de Shadcn/ui
-│   │   ├── inventory/          # Components específicos de inventario
-│   │   ├── movements/          # Components específicos de movimientos
-│   │   └── dashboard/          # Components del panel principal
-│   ├── lib/                    # Utilidades y configuraciones
-│   │   ├── prisma.ts           # Instancia de Prisma client
-│   │   ├── utils.ts            # Funciones de utilidad (clsx, etc.)
-│   │   └── movement-utils.ts   # Utilidades específicas para movimientos
-│   └── auth.ts                 # Configuración de Auth.js
-├── prisma/                     # Esquema y migraciones de Prisma
-│   ├── schema.prisma           # Definición del modelo de datos
-│   └── seed.ts                 # Script de poblado inicial de datos
-├── public/                     # Recursos estáticos
-└── .env.example                # Plantilla de variables de entorno
+│   ├── actions/                 # Server Actions tipadas para mutaciones
+│   ├── app/                     # Rutas de Next.js App Router (Páginas y APIs)
+│   ├── components/              # Componentes de UI modulares y reutilizables
+│   │   ├── audit/               # Visor de bitácora de auditoría
+│   │   ├── dashboard/           # Analítica Recharts y tarjetas KPI
+│   │   ├── inventory/           # Tablas, importación Excel, etiquetas QR
+│   │   ├── movements/           # Escáner de cámara, firma digital y vales
+│   │   ├── projects/            # Gestión de obras y proyectos
+│   │   └── suppliers/           # Directorio de proveedores
+│   ├── lib/                     # Utilidades, esquemas Zod, Prisma y DemoStore
+│   └── middleware.ts            # Middleware Edge de autenticación y seguridad
+└── package.json
 ```
 
-## Uso
+---
 
-### Panel Principal (`/dashboard`)
+## 📚 Documentación Técnica e Integraciones
 
-- Vista general del inventario
-- Tarjetas de resumen: total de materiales, stock bajo, movimientos hoy
-- Alertas de stock que requieren atención
-- Botón de acceso rápido a inventario y movimientos
+Para equipos de desarrollo, integraciones con ERPs o desarrollo de aplicaciones móviles complementarias:
 
-### Inventario (`/inventory`)
+* 👉 [**Especificación de la API REST**](docs/API.md): Documentación de endpoints (`/api/materials`, `/api/movements`, etc.), autenticación con Bearer Tokens y ejemplos de peticiones.
+* 👉 [**Arquitectura, Sincronización Offline y Seguridad**](docs/ARQUITECTURA.md): Funcionamiento de la sincronización por lotes para zonas sin cobertura, Rate Limiting defensivo y trazabilidad.
 
-- Lista completa de materiales con búsqueda en tiempo real
-- Filtros: Todos, Stock Bajo, Stock Normal
-- Vista de tarjetas (móvil) y tabla (escritorio)
-- Acciones: Editar, Eliminar, Ver detalles
-- Formulario para crear nuevos materiales (incluye categoría/ubicación opcional)
+---
 
-### Movimientos (`/movements`)
+## 🧪 Testing y Despliegue
 
-- Formulario para registrar nuevos movimientos
-  - Selección de material con búsqueda
-  - Tipo: Entrada (+) o Salida (-)
-  - Cantidad, fecha y notas opcionales
-  - Validación de stock suficiente para salidas
-- Lista de movimientos recientes
-  - Vista de tarjetas (móvil) y tabla (escritorio)
-  - Detalles expandibles al hacer click
-  - Información de categoría, ubicación, usuario y fecha
+### Pruebas Unitarias
+Ejecuta las pruebas automatizadas con:
+```bash
+pnpm test
+```
+Verifica la validez de los esquemas Zod y la lógica transaccional del almacén en memoria (`DemoStore`).
 
-### Historial de Movimientos (`/movements/history`)
+### Despliegue en Vercel
+1. Conecta el repositorio a [Vercel](https://vercel.com/).
+2. Asocia una base de datos PostgreSQL (Neon, Supabase o Prisma Postgres).
+3. Configura las variables `DATABASE_URL`, `ACCESS_TOKEN_SECRET` y `REFRESH_TOKEN_SECRET`.
+4. Define el comando de construcción (**Build Command**) como:
+   ```bash
+   pnpm build-bd
+   ```
 
-- Filtros avanzados: rango de fechas, material, tipo
-- Paginetion eficiente
-- Estadísticas de entradas/salidas totales
-- Exportación a CSV del historial filtrado
+---
 
-### Categorías y Ubicaciones (`/categories`, `/locations`)
+## 📄 Licencia
 
-- CRUD completo para gestionar taxonomías
-- Lista con búsqueda y acciones de edición/eliminación
-
-### Configuración (`/settings`)
-
-- Información del sistema
-- Opciones de tema (claro/oscuro)
-
-## Seguridad
-
-Todas las mutaciones de datos están protegidas mediante:
-
-1. Middleware de Next.js que verifica autenticación en todas las rutas de `/app`
-2. Server Actions que validan el `userId` antes de ejecutar operaciones
-3. Validación de esquemas con Zod para asegurar integridad de datos de entrada
-4. Verificación adicional de existencia de usuario en base de datos para prevenir sesiones huérfanas
-
-- **Nota:** Después de mucho tiempo de inactividad o borrado de cookies, el sistema mostrará un mensaje claro para volver a iniciar sesión en lugar de fallar silenciosamente
-
-## Testing
-
-El proyecto incluye:
-
-- Scripts de semillado con datos de prueba realistas
-- Validaciones tanto en cliente como en servidor
-- Manejo de errores amigable para el usuario
-- Estados de carga y vacíos en todas las listas
-- Tests unitarios con Jest para esquemas de validación (cobertura inicial)
-
-## Contribuir
-
-1. Fork el repositorio
-2. Crear una rama feature (`git checkout -b feature/AmazingFeature`)
-3. Commit sus cambios (`git commit -m 'Add some AmazingFeature'`)
-4. Push a la rama (`git push origin feature/AmazingFeature`)
-5. Abrir un Pull Request
-
-## Licencia
-
-Este proyecto está bajo la Licencia MIT - vea el archivo [LICENSE](LICENSE) para detalles.
-
-## Acknowledgements
-
-- [Next.js](https://nextjs.org/)
-- [Auth.js](https://authjs.dev/)
-- [Prisma ORM](https://www.prisma.io/)
-- [Tailwind CSS](https://tailwindcss.com/)
-- [Shadcn/ui](https://ui.shadcn.com/)
-- [Lucide Icons](https://lucide.dev/)
-- [Sonner](https://sonner.emilkowal.ski/) (para notificaciones)
+Este proyecto está bajo la Licencia MIT. Consulta el archivo [LICENSE](LICENSE) para más detalles.
